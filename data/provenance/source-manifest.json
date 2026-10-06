@@ -1,0 +1,205 @@
+{
+  "generator_repository": "https://github.com/sql-bi/Contoso-Data-Generator-V2",
+  "generator_commit": "eaeb57a9eaa6ad0cdab4fb527552102685434ee0",
+  "generator_version": "2.0.1.0",
+  "data_repository": "https://github.com/sql-bi/Contoso-Data-Generator-V2-Data",
+  "data_repository_commit": "b3d5caa022e5180eefb6915eb57e60a8290b3142",
+  "static_asset_release": "https://github.com/sql-bi/Contoso-Data-Generator-V2-Data/releases/tag/static-files",
+  "static_asset_release_id": 151012691,
+  "license": "MIT (copies for source and data included)",
+  "dotnet_sdk": "8.0.425",
+  "portability_patch": "linux-build.patch: skip Windows-only version-stamp prebuild on non-Windows; no Engine or generation algorithm modifications",
+  "configuration_base": "scripts/publish_tool/config.json at generator_commit",
+  "input_workbook_base": "scripts/publish_tool/data.xlsx at generator_commit (unmodified)",
+  "configuration_changes": {
+    "OrdersCount": 100000,
+    "StartDT": "2023-01-01T00:00:00Z",
+    "YearsCount": 3,
+    "CutDateBefore": "2023-01-01",
+    "CutDateAfter": "2025-12-31",
+    "CustomerPercentage": 0.02,
+    "SalesOrders": "SALES",
+    "CountryCurrency": "all 8 country entries use USD"
+  },
+  "randomness": "Official Engine uses Random(0), customers shuffle Random(0), and per-day Random(year*1000+dayOfYear). No seed override or generation logic change.",
+  "price_semantics": {
+    "NetPrice": "discounted unit price; unitPrice*(1-discount/100)",
+    "UnitCost": "base product unit cost times category temporal price factor; no FX applied",
+    "ExchangeRate": "stored separately from values; all published Sales rows must have USD and rate 1"
+  },
+  "price_source": "https://github.com/sql-bi/Contoso-Data-Generator-V2/blob/eaeb57a9eaa6ad0cdab4fb527552102685434ee0/DatabaseGenerator/Engine.cs#L515-L532",
+  "sales_mapping_source": "https://github.com/sql-bi/Contoso-Data-Generator-V2/blob/eaeb57a9eaa6ad0cdab4fb527552102685434ee0/DatabaseGenerator/Engine.cs#L257-L279",
+  "asset_files": [
+    {
+      "name": "Cust.AU.01.csv.gz",
+      "url": "https://github.com/sql-bi/Contoso-Data-Generator-V2-Data/releases/download/static-files/Cust.AU.01.csv.gz",
+      "release_asset_id": 161868548,
+      "bytes": 22099330,
+      "sha256": "12107721c6c5cb45d66bcae1a2cd709a450ab7a1709771d60253e2abbd460ac9"
+    },
+    {
+      "name": "Cust.AU.02.csv.gz",
+      "url": "https://github.com/sql-bi/Contoso-Data-Generator-V2-Data/releases/download/static-files/Cust.AU.02.csv.gz",
+      "release_asset_id": 161868556,
+      "bytes": 22100552,
+      "sha256": "27a3903e7ce3314156496b85481ab5969c9f82cb046c13b4ea6779b29d13d0db"
+    },
+    {
+      "name": "Cust.CA.01.csv.gz",
+      "url": "https://github.com/sql-bi/Contoso-Data-Generator-V2-Data/releases/download/static-files/Cust.CA.01.csv.gz",
+      "release_asset_id": 161868866,
+      "bytes": 22629366,
+      "sha256": "7a123faaf4d953c71018bc485cf68d95a131568472a24e39195693c071dd5257"
+    },
+    {
+      "name": "Cust.CA.02.csv.gz",
+      "url": "https://github.com/sql-bi/Contoso-Data-Generator-V2-Data/releases/download/static-files/Cust.CA.02.csv.gz",
+      "release_asset_id": 161868902,
+      "bytes": 22626434,
+      "sha256": "2533520dd8ec38c0544433ce083b3a6202e2abcd2e4fd7cf5c5ec979fded9583"
+    },
+    {
+      "name": "Cust.DE.01.csv.gz",
+      "url": "https://github.com/sql-bi/Contoso-Data-Generator-V2-Data/releases/download/static-files/Cust.DE.01.csv.gz",
+      "release_asset_id": 161868968,
+      "bytes": 21718834,
+      "sha256": "9f6addf377b35fd98eebd586b21f05b3aa573a5877637128d082395f88dd31a9"
+    },
+    {
+      "name": "Cust.DE.02.csv.gz",
+      "url": "https://github.com/sql-bi/Contoso-Data-Generator-V2-Data/releases/download/static-files/Cust.DE.02.csv.gz",
+      "release_asset_id": 161868990,
+      "bytes": 21715595,
+      "sha256": "a65b2115564b7c29de2bc36cda8cda403eddc73e3d92c343dc7eb8220ef9b531"
+    },
+    {
+      "name": "Cust.FR.01.csv.gz",
+      "url": "https://github.com/sql-bi/Contoso-Data-Generator-V2-Data/releases/download/static-files/Cust.FR.01.csv.gz",
+      "release_asset_id": 161869014,
+      "bytes": 23162296,
+      "sha256": "0b0512b1c0c92514a927b226b3af2d23f775c9cb4dd46e412e3d524b5c7062a7"
+    },
+    {
+      "name": "Cust.IT.01.csv.gz",
+      "url": "https://github.com/sql-bi/Contoso-Data-Generator-V2-Data/releases/download/static-files/Cust.IT.01.csv.gz",
+      "release_asset_id": 161869021,
+      "bytes": 22743905,
+      "sha256": "0b518ef129890eb6300e612d7d10190cf5a3764b773745924405be9b1b16e61b"
+    },
+    {
+      "name": "Cust.NL.01.csv.gz",
+      "url": "https://github.com/sql-bi/Contoso-Data-Generator-V2-Data/releases/download/static-files/Cust.NL.01.csv.gz",
+      "release_asset_id": 161869041,
+      "bytes": 22061195,
+      "sha256": "5453c206b9bc3f80f1ac10a590730b6c15732252065004d5917c67013a5db45e"
+    },
+    {
+      "name": "Cust.UK.01.csv.gz",
+      "url": "https://github.com/sql-bi/Contoso-Data-Generator-V2-Data/releases/download/static-files/Cust.UK.01.csv.gz",
+      "release_asset_id": 161869067,
+      "bytes": 22935718,
+      "sha256": "17a9f8e10d29912718725f6dcb45bef2d721aee31171ffc298b3d93bb16ed7d1"
+    },
+    {
+      "name": "Cust.UK.02.csv.gz",
+      "url": "https://github.com/sql-bi/Contoso-Data-Generator-V2-Data/releases/download/static-files/Cust.UK.02.csv.gz",
+      "release_asset_id": 161869070,
+      "bytes": 22938503,
+      "sha256": "2a2e620a1735bf92ab17989aa7517d99b6d478ef2b2c60671d7a7013ea9ff741"
+    },
+    {
+      "name": "Cust.UK.03.csv.gz",
+      "url": "https://github.com/sql-bi/Contoso-Data-Generator-V2-Data/releases/download/static-files/Cust.UK.03.csv.gz",
+      "release_asset_id": 161869071,
+      "bytes": 22936683,
+      "sha256": "b90a0bda077c6ef3844655bb96b953cb7ac9dc40a555b311cda1e13417cf6258"
+    },
+    {
+      "name": "Cust.US.01.csv.gz",
+      "url": "https://github.com/sql-bi/Contoso-Data-Generator-V2-Data/releases/download/static-files/Cust.US.01.csv.gz",
+      "release_asset_id": 161869075,
+      "bytes": 23039669,
+      "sha256": "8edce95eaac244637fe9256d42f4f331573edeab51c59fbb8572739e987f4347"
+    },
+    {
+      "name": "Cust.US.02.csv.gz",
+      "url": "https://github.com/sql-bi/Contoso-Data-Generator-V2-Data/releases/download/static-files/Cust.US.02.csv.gz",
+      "release_asset_id": 161869090,
+      "bytes": 23043823,
+      "sha256": "a382eb8780e9cf0c873a724d9b731b5ec276d7bea3627a9ee16278fd7f0d9328"
+    },
+    {
+      "name": "Cust.US.03.csv.gz",
+      "url": "https://github.com/sql-bi/Contoso-Data-Generator-V2-Data/releases/download/static-files/Cust.US.03.csv.gz",
+      "release_asset_id": 161869092,
+      "bytes": 23041478,
+      "sha256": "dc43752109286952b9d2694c379c29a4a71e26f98874b6cab4b167447ea236b0"
+    },
+    {
+      "name": "Cust.US.04.csv.gz",
+      "url": "https://github.com/sql-bi/Contoso-Data-Generator-V2-Data/releases/download/static-files/Cust.US.04.csv.gz",
+      "release_asset_id": 161869120,
+      "bytes": 23044048,
+      "sha256": "e28311120e61da74a2c9a626eecff45ae8b23b2124a44ff28b03231325072883"
+    },
+    {
+      "name": "Cust.US.05.csv.gz",
+      "url": "https://github.com/sql-bi/Contoso-Data-Generator-V2-Data/releases/download/static-files/Cust.US.05.csv.gz",
+      "release_asset_id": 161869125,
+      "bytes": 23042068,
+      "sha256": "2dbc2c00a2216cfe5daa66c8f511177d5a4754d501e043ab576e1b72c5f2f639"
+    },
+    {
+      "name": "Cust.US.06.csv.gz",
+      "url": "https://github.com/sql-bi/Contoso-Data-Generator-V2-Data/releases/download/static-files/Cust.US.06.csv.gz",
+      "release_asset_id": 161869165,
+      "bytes": 23038114,
+      "sha256": "2734a2a64f1ff23b272b9b8e890c50901e2ef213e71ea68965b192717df8c6eb"
+    },
+    {
+      "name": "Cust.US.07.csv.gz",
+      "url": "https://github.com/sql-bi/Contoso-Data-Generator-V2-Data/releases/download/static-files/Cust.US.07.csv.gz",
+      "release_asset_id": 161869184,
+      "bytes": 23035768,
+      "sha256": "bae9bf7e27c822bce02d6356c4d17a1848dd273da7f3d7fc0075140735bb2a7b"
+    },
+    {
+      "name": "Cust.US.08.csv.gz",
+      "url": "https://github.com/sql-bi/Contoso-Data-Generator-V2-Data/releases/download/static-files/Cust.US.08.csv.gz",
+      "release_asset_id": 161869208,
+      "bytes": 23420457,
+      "sha256": "8d4dd6824ae7638a27d06c2e0cdf677639afd7cd893f82485f06811a7219829a"
+    },
+    {
+      "name": "Cust.US.09.csv.gz",
+      "url": "https://github.com/sql-bi/Contoso-Data-Generator-V2-Data/releases/download/static-files/Cust.US.09.csv.gz",
+      "release_asset_id": 161869250,
+      "bytes": 23401767,
+      "sha256": "a804deeaad4457dbb9367a46557bee8cd0e972d629c1702427321f5e220e6aed"
+    },
+    {
+      "name": "ECB_eurofxref-hist.csv",
+      "url": "https://github.com/sql-bi/Contoso-Data-Generator-V2-Data/releases/download/static-files/ECB_eurofxref-hist.csv",
+      "release_asset_id": 173185829,
+      "bytes": 1765499,
+      "sha256": "61c12358adff269211996a974cddda5ccb7ed9472a02065f3b97b8cf4e260a38"
+    },
+    {
+      "name": "UKPostcodes.csv",
+      "url": "https://github.com/sql-bi/Contoso-Data-Generator-V2-Data/releases/download/static-files/UKPostcodes.csv",
+      "release_asset_id": 161867731,
+      "bytes": 52237,
+      "sha256": "3c082b254297f9df99df590c38fe599fc54789a3dcdc2cbf8cf75201964d0fcc"
+    }
+  ],
+  "input-data.xlsx": {
+    "sha256": "841f8eb7e8887407d818a2a2fe62d082366d476047dfaa1cc18b48a34e1df8be"
+  },
+  "generator-config.json": {
+    "sha256": "a07095ca24a9e91e3b73e2583c4fe2f00f0f2c13e08d99ee3bcdefbb32711b20"
+  },
+  "generated_at_utc": "2026-10-06T14:40:18Z",
+  "data_version": "contoso-v2-2023-2025-692e0347d360",
+  "actual_orders": 97215,
+  "actual_sales_rows": 232928
+}

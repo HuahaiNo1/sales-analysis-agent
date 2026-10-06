@@ -1,0 +1,19 @@
+diff --git a/DatabaseGenerator/DatabaseGenerator.csproj b/DatabaseGenerator/DatabaseGenerator.csproj
+index 79b94cf..18508ae 100644
+--- a/DatabaseGenerator/DatabaseGenerator.csproj
++++ b/DatabaseGenerator/DatabaseGenerator.csproj
+@@ -1,4 +1,4 @@
+-﻿<Project Sdk="Microsoft.NET.Sdk">
++<Project Sdk="Microsoft.NET.Sdk">
+ 
+   <PropertyGroup>
+     <OutputType>Exe</OutputType>
+@@ -15,7 +15,7 @@
+     <PackageReference Include="Parquet.Net" Version="4.23.5" />
+   </ItemGroup>
+ 
+-  <Target Name="PreBuild" BeforeTargets="PreBuildEvent">
++  <Target Name="PreBuild" BeforeTargets="PreBuildEvent" Condition="'$(OS)' == 'Windows_NT'">
+     <Exec Command="echo Custom assembly version (start)&#xD;&#xA;for /f &quot;delims=&quot; %25%25i in ('git rev-parse HEAD ') do set ZHASH=%25%25i&#xD;&#xA;echo Current hash: %25ZHASH%25&#xD;&#xA;echo [assembly: System.Reflection.AssemblyProduct(&quot;DatabaseGeneratorV2 - %25ZHASH%25&quot;)] &gt;$(ProjectDir)assemblygithash.cs&#xD;&#xA;echo Custom assembly version (end)" />
+   </Target>
+  

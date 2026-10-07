@@ -38,6 +38,7 @@ from langsmith import tracing_context
 from pydantic import ConfigDict, Field
 
 from .budget import MAX_OUTPUT_TOKENS, BudgetGuard, shared_budget
+from .schemas import normalize_query_intent
 
 MAIN_TOOLS = frozenset({"get_metric_catalog", "query_metrics", "task"})
 ANALYSIS_TOOLS = frozenset({"analyze_result"})
@@ -53,6 +54,10 @@ class AgentBoundaryError(RuntimeError):
 
 class AgentCancelled(RuntimeError):
     code = "CANCELLED"
+
+
+class AgentToolError(AgentBoundaryError):
+    code = "AGENT_TOOL_ERROR"
 
 
 def _json(value: Any) -> str:
@@ -446,8 +451,10 @@ class MockSalesModel(BaseChatModel):
 
 
 MAIN_PROMPT = """你是模拟销售数据分析助手。先用 get_metric_catalog 核对指标口径与数据覆盖，再提出一次 query_metrics 的 QuerySpec 查询。只用固定五指标，最多两个指标与两个维度。身份/门店授权由服务器决定，不能写入权限字段。QuerySpec 不是 SQL。
-期间左闭右开。用户未给期间时需澄清，除非明确请求数据集最近一年。语义不清先问一个问题；没有付款、退款、取消和企业净利润数据。完成 query_metrics 后，把返回 result_id 和问题以 JSON 字符串交给 task，subagent_type 必须为 analysis。仅分析已返回句柄。分析完成后用中文给简短观察，不证明因果，不把模拟数据当作真实经营数据。任何工具错误就停止，不猜数字。
-QuerySpec 字段为 schema_version=queryspec_v1,dataset_id=contoso_v2,metric_version=metrics_v1,metrics,period={start,end,date_field:order_date},comparison=null或同形period,group_by,filters=[{dimension,op:eq或in,values:[键]}],analysis=summary|compare|contribution,sort=null或{field,direction:asc|desc},limit=1..100,chart=table|line|bar|waterfall|none。指标为sales_amount,order_count,units_sold,avg_order_value,gross_profit。维度为day,week,month,product,category,store,customer_country,store_country。AOV不能按商品/类别分组筛选。贡献只能用于可加总指标。不要调用未列明工具。"""
+期间左闭右开。用户未给期间时需澄清，除非明确请求数据集最近一年。语义不清先问一个问题；没有付款、退款、取消和企业净利润数据。完成 query_metrics 后，把返回 result_id 和问题以 JSON 字符串交给 task，subagent_type 必须为 analysis。仅分析已返回句柄。分析完成后用中文给简短观察，不证明因果，不把模拟数据当作真实经营数据。任何工具错误就停止，不猜数字。工具校验或执行失败不等于用户意图不清，不得要求用户授权调整内部参数。
+QuerySpec 字段为 schema_version=queryspec_v1,dataset_id=contoso_v2,metric_version=metrics_v1,metrics,period={start,end,date_field:order_date},comparison=null或同形period,group_by,filters=[{dimension,op:eq或in,values:[键]}],analysis=summary|compare|contribution,sort=null或{field,direction:asc|desc},limit=1..100,chart=table|line|bar|waterfall|none。指标为sales_amount,order_count,units_sold,avg_order_value,gross_profit。维度为day,week,month,product,category,store,customer_country,store_country。AOV不能按商品/类别分组筛选。贡献只能用于可加总指标。不要调用未列明工具。
+瀑布图必须同时设置 chart=waterfall 和 analysis=contribution，只有单一可加总指标（sales_amount、units_sold 或 gross_profit）、明确本期及对比期、明确非时间分组时才可使用。用户明确这些条件并要求瀑布图，就已表达贡献拆解意图，不需要额外说“贡献”或确认内部分析类型；不可生成 analysis=compare 的瀑布图。缺期间、指标或分组时问缺失项，不凭空补全；订单数、平均订单金额、多指标或时间分组不支持瀑布图。
+例如“2025年9月比8月销售额，按类别用瀑布图”：metrics=[sales_amount],period={start:2025-09-01,end:2025-10-01,date_field:order_date},comparison={start:2025-08-01,end:2025-09-01,date_field:order_date},group_by=[category],analysis=contribution,chart=waterfall。上一条查询若为按月趋势或表格，本次明确的新期间、类别分组和瀑布要求仍优先，不能沿用旧时间分组。"""
 ANALYSIS_PROMPT = """你是唯一受控分析子 Agent。只可调用 analyze_result(result_id) 读取本次运行已授权的聚合分析。不能查询数据库、发起新查询、写文件、联网或执行代码。按工具给出的确定性结果用中文概括2至4条观察，明确模拟数据和不能推断因果。不要编造数值。输入是含result_id和question的JSON。"""
 
 
@@ -588,6 +595,7 @@ def build_runtime(
         "queries": 0,
         "tools_called": [],
         "model_mode": selected_mode,
+        "_query_error": None,
     }
     counter = {"calls": 0, "lock": threading.Lock()}
     handles: set[str] = set()
@@ -602,20 +610,32 @@ def build_runtime(
 
     @tool
     async def query_metrics(spec: dict[str, Any]) -> dict:
-        """Submit a QuerySpec to the validating authorization gateway; never SQL or identity fields."""
+        """Submit a QuerySpec; never SQL or identity fields.
+
+        Waterfall requires analysis=contribution, one additive metric
+        (sales_amount/units_sold/gross_profit), both periods and a non-time group.
+        Do not infer missing information or ask permission to fix internal labels.
+        """
         _check_cancelled(cancelled)
         async with query_lock:
             if state["queries"] >= 1:
                 raise AgentBoundaryError("每次运行只允许一次聚合查询")
             state["queries"] += 1
-            result = await _callback(query_callback, spec)
+            spec = normalize_query_intent(spec)
+            state["tools_called"].append("query_metrics")
+            try:
+                result = await _callback(query_callback, spec)
+            except Exception as exc:
+                # ToolNode may turn ValueError into a ToolMessage and let the
+                # model call it ambiguity. Preserve the actual gateway failure.
+                state["_query_error"] = exc
+                raise
             _check_cancelled(cancelled)
             if not isinstance(result, dict) or not isinstance(result.get("result_id"), str):
                 raise AgentBoundaryError("Query gateway did not return an immutable result handle")
             handles.add(result["result_id"])
             state["result"] = result
             state["query_spec"] = copy.deepcopy(spec)
-            state["tools_called"].append("query_metrics")
             # The main model sees only an opaque handle and small safe metadata.
             return {
                 "result_id": result["result_id"],
@@ -714,6 +734,10 @@ async def run_agent(
             config={"recursion_limit": 30, "callbacks": [], "max_concurrency": 1},
         )
     _check_cancelled(cancelled)
+    if state["_query_error"] is not None:
+        raise state["_query_error"]
+    if any(isinstance(m, ToolMessage) and m.status == "error" for m in output["messages"]):
+        raise AgentToolError("分析工具执行失败，未发布新结果；请重试或报告此问题")
     answer = output["messages"][-1].content
     if state["model_mode"] == "mock" and state["query_spec"]:
         p = state["query_spec"]["period"]

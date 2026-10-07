@@ -27,6 +27,7 @@ const currentResult = ref<AnalysisResult | null>(null)
 const currentPresentation = ref<ChartType | null>(null)
 const activeRun = ref<Run | null>(null)
 const submitting = ref(false)
+const conversationTransition = ref<'creating' | 'loading' | null>(null)
 const cancelling = ref(false)
 const prompt = ref('')
 const queryError = ref('')
@@ -41,7 +42,8 @@ let pollTimer: ReturnType<typeof setTimeout> | undefined
 let generation = 0
 let dashboardController: AbortController | undefined
 let dashboardGeneration = 0
-const busy = computed(() => submitting.value || Boolean(activeRun.value && !TERMINAL_STATUSES.has(activeRun.value.status)))
+const busy = computed(() => Boolean(conversationTransition.value) || submitting.value || Boolean(activeRun.value && !TERMINAL_STATUSES.has(activeRun.value.status)))
+const activityLabel = computed(() => conversationTransition.value === 'creating' ? '正在新建会话' : conversationTransition.value === 'loading' ? '正在读取会话' : statusLabel(activeRun.value?.status || 'queued'))
 const modelMode = computed(() => catalog.value.model_mode || catalog.value.mode || 'unknown')
 const isMock = computed(() => modelMode.value === 'mock')
 const isLive = computed(() => modelMode.value === 'live' || modelMode.value === 'deepagents')
@@ -119,31 +121,51 @@ function selectYear(year: string) { dateStart.value = `${year}-01-01`; dateEnd.v
 async function newConversation(ask = true) {
   if (busy.value) return
   if (ask && messages.value.length) { showResetConfirm.value = true; return }
-  showResetConfirm.value = false; generation++; clearTimeout(pollTimer)
-  try { conversation.value = await api.createConversation(); conversation.value.id ||= conversation.value.conversation_id!; messages.value = []; currentResult.value = null; currentPresentation.value = null; activeRun.value = null; queryError.value = ''; queryNotice.value = ''; prompt.value = ''; safeStorageSet(storageKey('conversation'), conversation.value.id); void nextTick(() => input.value?.focus()) } catch (error) { queryError.value = error instanceof Error ? error.message : '新建会话失败' }
+  showResetConfirm.value = false; conversationTransition.value = 'creating'
+  const currentGeneration = ++generation
+  clearTimeout(pollTimer)
+  try {
+    const created = await api.createConversation()
+    if (currentGeneration !== generation) return
+    conversation.value = { ...created, id: created.id || created.conversation_id! }
+    messages.value = []; currentResult.value = null; currentPresentation.value = null; activeRun.value = null; queryError.value = ''; queryNotice.value = ''; prompt.value = ''
+    safeStorageSet(storageKey('conversation'), conversation.value.id)
+    void nextTick(() => input.value?.focus())
+  } catch (error) {
+    if (currentGeneration === generation) queryError.value = error instanceof Error ? error.message : '新建会话失败'
+  } finally { if (currentGeneration === generation) conversationTransition.value = null }
 }
 async function loadConversation(id: string, changePage = true) {
   if (busy.value) return
-  generation++; clearTimeout(pollTimer)
-  const data = await api.conversation(id)
-  conversation.value = { ...data, id: data.id || data.conversation_id || id }
-  messages.value = data.messages || data.history || []
-  currentResult.value = null; currentPresentation.value = null; activeRun.value = null; queryError.value = ''; queryNotice.value = ''
-  safeStorageSet(storageKey('conversation'), id)
-  if (changePage) setPage('overview')
-  const runId = data.current_run_id || data.latest_run_id
-  if (runId) {
-    activeRun.value = await api.run(runId)
-    if (!TERMINAL_STATUSES.has(activeRun.value.status)) void pollRun(runId, generation)
-    else if (['succeeded', 'no_data'].includes(activeRun.value.status)) {
-      if (activeRun.value.result) currentResult.value = activeRun.value.result
-      else if (activeRun.value.result_id) currentResult.value = await api.result(activeRun.value.result_id)
-      applyRunPresentation(activeRun.value)
+  conversationTransition.value = 'loading'
+  const currentGeneration = ++generation
+  clearTimeout(pollTimer)
+  try {
+    const data = await api.conversation(id)
+    if (currentGeneration !== generation) return
+    // Publish the conversation and its result together; failed loads keep the current context.
+    let loadedRun: Run | null = null
+    let loadedResult: AnalysisResult | null = null
+    let notice = ''
+    const runId = data.current_run_id || data.latest_run_id
+    if (runId) {
+      loadedRun = await api.run(runId)
+      if (currentGeneration !== generation) return
+      if (['succeeded', 'no_data'].includes(loadedRun.status)) loadedResult = loadedRun.result || (loadedRun.result_id ? await api.result(loadedRun.result_id) : null)
+    } else if (data.last_result_id) {
+      try { loadedResult = await api.result(data.last_result_id) } catch (error) { notice = error instanceof Error ? error.message : '历史结果无法读取' }
     }
-  } else if (data.last_result_id) {
-    try { currentResult.value = await api.result(data.last_result_id) } catch (error) { queryNotice.value = error instanceof Error ? error.message : '历史结果无法读取' }
-  }
-  scrollChat()
+    if (currentGeneration !== generation) return
+    conversation.value = { ...data, id: data.id || data.conversation_id || id }
+    messages.value = data.messages || data.history || []
+    currentResult.value = loadedResult; currentPresentation.value = null; activeRun.value = loadedRun; queryError.value = ''; queryNotice.value = notice
+    if (loadedRun) applyRunPresentation(loadedRun)
+    safeStorageSet(storageKey('conversation'), conversation.value.id)
+    if (changePage) setPage('overview')
+    if (runId && loadedRun && !TERMINAL_STATUSES.has(loadedRun.status)) void pollRun(runId, currentGeneration)
+    scrollChat()
+  } catch (error) { if (currentGeneration === generation) throw error }
+  finally { if (currentGeneration === generation) conversationTransition.value = null }
 }
 async function openConversation(id: string) { try { await loadConversation(id) } catch (error) { queryError.value = error instanceof Error ? error.message : '读取会话失败' } }
 async function submitQuery(text = prompt.value) {
@@ -155,7 +177,11 @@ async function submitQuery(text = prompt.value) {
   const currentGeneration = ++generation
   clearTimeout(pollTimer)
   try {
-    if (!conversation.value) { conversation.value = await api.createConversation(); conversation.value.id ||= conversation.value.conversation_id! }
+    if (!conversation.value) {
+      const created = await api.createConversation()
+      if (currentGeneration !== generation) return
+      conversation.value = { ...created, id: created.id || created.conversation_id! }
+    }
     const result = await api.startRun(conversation.value.id, message, conversation.value.state_version, crypto.randomUUID())
     if (currentGeneration !== generation) return
     activeRun.value = { ...result, run_id: result.run_id || result.id! }
@@ -167,9 +193,11 @@ async function submitQuery(text = prompt.value) {
     if (TERMINAL_STATUSES.has(result.status)) await pollRun(activeRun.value.run_id, currentGeneration)
     else void pollRun(activeRun.value.run_id, currentGeneration)
   } catch (error) {
-    if (error instanceof ApiError && error.status === 409 && conversation.value) { try { const updated = await api.conversation(conversation.value.id); conversation.value.state_version = updated.state_version } catch { /* The next retry will surface connection errors. */ } }
+    if (currentGeneration !== generation) return
+    if (error instanceof ApiError && error.status === 409 && conversation.value) { try { const updated = await api.conversation(conversation.value.id); if (currentGeneration !== generation) return; conversation.value.state_version = updated.state_version } catch { /* The next retry will surface connection errors. */ } }
+    if (currentGeneration !== generation) return
     queryError.value = error instanceof Error ? error.message : '请求未完成，请重试'
-  } finally { submitting.value = false }
+  } finally { if (currentGeneration === generation) submitting.value = false }
 }
 async function pollRun(runId: string, currentGeneration: number, failures = 0) {
   if (currentGeneration !== generation) return
@@ -193,31 +221,35 @@ async function finishRun(run: Run, currentGeneration: number) {
   if (currentGeneration !== generation) return
   cancelling.value = false; liveAnnouncement.value = statusLabel(run.status)
   if (run.result) currentResult.value = run.result
-  else if (run.result_id && ['succeeded', 'no_data'].includes(run.status)) { try { const result = await api.result(run.result_id); if (currentGeneration === generation) currentResult.value = result } catch (error) { queryError.value = error instanceof Error ? error.message : '结果读取失败' } }
+  else if (run.result_id && ['succeeded', 'no_data'].includes(run.status)) { try { const result = await api.result(run.result_id); if (currentGeneration === generation) currentResult.value = result } catch (error) { if (currentGeneration === generation) queryError.value = error instanceof Error ? error.message : '结果读取失败' } }
   if (currentGeneration !== generation) return
   applyRunPresentation(run)
   if (conversation.value) {
-    try { const updated = await api.conversation(conversation.value.id); if (currentGeneration !== generation) return; conversation.value.state_version = updated.state_version; if (updated.messages || updated.history) messages.value = updated.messages || updated.history || [] } catch { if (run.state_version !== undefined) conversation.value.state_version = run.state_version }
+    try { const updated = await api.conversation(conversation.value.id); if (currentGeneration !== generation) return; conversation.value.state_version = updated.state_version; if (updated.messages || updated.history) messages.value = updated.messages || updated.history || [] } catch { if (currentGeneration === generation && run.state_version !== undefined) conversation.value.state_version = run.state_version }
   }
+  if (currentGeneration !== generation) return
   if (!messages.value.some(message => message.role === 'assistant' && message.run_id === run.run_id)) messages.value.push({ role: 'assistant', content: run.message || run.clarification || (run.status === 'succeeded' ? '分析已完成，可以查看图表和数据明细。你也可以继续追问。' : run.status === 'cancelled' ? '已停止本次分析，原有会话仍保留。' : run.status === 'no_data' ? '这个范围没有匹配的数据，请调整日期或筛选条件。' : '请补充问题后重试。'), run_id: run.run_id, result_id: run.result_id, status: run.status })
   if (run.status === 'failed') queryError.value = run.message || '本次分析未完成，请重试'
   scrollChat()
 }
 async function cancelRun() {
-  if (!activeRun.value || cancelling.value) return
+  if (conversationTransition.value || !activeRun.value || TERMINAL_STATUSES.has(activeRun.value.status) || cancelling.value) return
   cancelling.value = true; queryError.value = ''
   try { const runId = activeRun.value.run_id; const run = await api.cancel(runId); if (run.status && TERMINAL_STATUSES.has(run.status)) { activeRun.value = await api.run(runId); await finishRun(activeRun.value, generation) } } catch (error) { cancelling.value = false; queryError.value = error instanceof Error ? error.message : '停止请求未确认，请稍后重试' }
 }
 async function showHistoryResult(message: ConversationMessage) {
   if (!message.result_id || busy.value) return
+  const currentGeneration = generation
   try {
     const result = await api.result(message.result_id)
+    if (currentGeneration !== generation) return
     const run = message.run_id ? await api.run(message.run_id) : null
+    if (currentGeneration !== generation) return
     currentResult.value = result
     currentPresentation.value = null
     if (run) applyRunPresentation(run)
     setPage('overview'); void nextTick(() => querySection.value?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
-  } catch (error) { queryError.value = error instanceof Error ? error.message : '结果读取失败' }
+  } catch (error) { if (currentGeneration === generation) queryError.value = error instanceof Error ? error.message : '结果读取失败' }
 }
 async function logout() {
   if (busy.value) return
@@ -252,10 +284,10 @@ onBeforeUnmount(() => { generation++; clearTimeout(pollTimer); dashboardControll
           <QueryResult v-if="dashboardTrend && !dashboardBusy" :result="dashboardTrend" title="销售趋势" compact :exportable="false" />
           <section v-else class="panel dashboard-placeholder"><div class="panel-heading"><div><h2>销售趋势</h2><p>{{ dashboardBusy ? '正在读取授权范围内的汇总数据' : '等待后端查询结果' }}</p></div><span class="subtle-tag">按月</span></div><div v-if="dashboardBusy" class="chart-loading"><LoaderCircle class="spin" :size="25" /><span>正在加载销售概览</span></div><div v-else class="empty-state"><BarChart3 :size="32" /><h3>销售概览尚未就绪</h3><p>连接后端后会显示实际聚合结果，不使用示例数字填充。</p><button class="button button-outline button-small" @click="loadDashboard">重新加载</button></div></section>
           <section class="panel quick-analysis"><div class="panel-heading"><div><h2>从一个好问题开始</h2><p>选一个方向，继续深入你的数据</p></div><Sparkles :size="18" class="teal" /></div><div class="sample-grid"><button v-for="sample in defaultSamples" :key="sample.title" @click="useSample(sample.text)" :disabled="busy"><span class="sample-icon"><component :is="sample.icon" :size="18" /></span><strong>{{ sample.title }}</strong><span>{{ sample.text }}</span><span class="sample-footer">{{ sample.tag }}分析<ArrowUpRight :size="14" /></span></button></div></section>
-          <div ref="querySection" class="query-result-anchor"><QueryResult v-if="currentResult" :result="currentResult" :presentation-chart="currentPresentation" title="本次查询结果" /><div v-else-if="busy" class="panel analyzing-result" role="status"><div class="analyzing-orbit"><Sparkles :size="24" /></div><h3>{{ statusLabel(activeRun?.status || 'queued') }}</h3><p>先校验口径和权限，再计算并解释结果</p><div class="loading-line"></div></div></div>
+          <div ref="querySection" class="query-result-anchor"><QueryResult v-if="currentResult" :result="currentResult" :presentation-chart="currentPresentation" title="本次查询结果" /><div v-else-if="busy" class="panel analyzing-result" role="status"><div class="analyzing-orbit"><Sparkles :size="24" /></div><h3>{{ activityLabel }}</h3><p>先校验口径和权限，再计算并解释结果</p><div class="loading-line"></div></div></div>
           <div class="integrity-note"><ShieldCheck :size="15" /><span>结果来自受控查询。模拟数据中的变化不代表真实市场趋势，也不能单独证明业务原因。</span></div>
         </div>
-        <aside class="assistant-panel panel"><div class="assistant-heading"><span class="assistant-logo"><Sparkles :size="18" /></span><div><h2>销售分析助手</h2><span>{{ isLive ? 'Deep Agents · 受控查询' : isMock ? 'Deep Agents · 离线确定性模型' : '正在确认执行模式' }}</span></div><button class="icon-button" title="新建会话并重置上下文" aria-label="新建会话并重置上下文" :disabled="busy" @click="newConversation()"><Plus :size="18" /></button></div><div class="assistant-context"><span class="tiny-dot"></span>{{ busy ? statusLabel(activeRun?.status || 'queued') : '可连续追问' }}<span>{{ conversation ? `会话 ${conversation.id.slice(0, 6)}` : '连接中' }}</span></div><div ref="chatBody" class="chat-body" role="log" aria-label="分析对话"><div v-if="welcome" class="assistant-welcome"><span class="welcome-mark"><Sparkles :size="23" /></span><h3>你好，想了解哪些销售表现？</h3><p>你可以问趋势、期间对比和变化贡献。<br />我会展示采用的口径与数据来源。</p><button v-for="sample in defaultSamples" :key="sample.title" @click="useSample(sample.text)" :disabled="busy">{{ sample.title }}<ChevronRight :size="14" /></button><div class="welcome-tip"><CircleHelp :size="15" /><span>当前快照覆盖 2023–2025 年<br />建议在问题里写明日期</span></div></div><template v-for="(message, index) in messagesWithRun" :key="`${message.run_id || index}-${message.role}`"><div class="chat-message" :class="message.role"><div class="message-avatar" v-if="message.role === 'assistant'"><Sparkles :size="13" /></div><div class="message-content"><p>{{ message.content }}</p><button v-if="message.result_id" class="message-result-link" @click="showHistoryResult(message)" :disabled="busy"><BarChart3 :size="13" />查看这次结果<ArrowUpRight :size="12" /></button><span v-if="message.status" class="message-status">{{ statusLabel(message.status) }}</span></div></div></template><div v-if="busy" class="chat-message assistant"><div class="message-avatar"><Sparkles :size="13" /></div><div class="message-content working-message"><LoaderCircle :size="14" class="spin" />{{ cancelling ? '正在请求停止…' : statusLabel(activeRun?.status || 'queued') + '…' }}</div></div></div><div v-if="queryNotice" class="assistant-notice" role="status">{{ queryNotice }}</div><div v-if="queryError" class="assistant-error" role="alert"><CircleAlert :size="14" /><span>{{ queryError }}</span><button class="icon-button" aria-label="关闭错误提示" @click="queryError = ''"><X :size="13" /></button></div><div class="composer-wrap"><div v-if="!welcome && !busy" class="followup-chips"><button v-for="text in followups" :key="text" @click="useSample(text)">{{ text }}</button></div><form class="composer" @submit.prevent="submitQuery()"><label class="sr-only" for="query-input">向销售分析助手提问</label><textarea id="query-input" ref="input" v-model="prompt" placeholder="例如：2025 年销售额按月怎么变化？" rows="3" maxlength="2000" :disabled="busy" @keydown="handleKey"></textarea><div class="composer-bottom"><span>{{ prompt.length ? `${prompt.length}/2000` : 'Enter 发送 · Shift+Enter 换行' }}</span><button v-if="busy" type="button" class="stop-button" @click="cancelRun" :disabled="cancelling || !activeRun"><Square :size="12" fill="currentColor" />{{ cancelling ? '停止中' : '停止' }}</button><button v-else type="submit" class="send-button" :disabled="!prompt.trim() || !conversation" aria-label="发送问题"><Send :size="15" /></button></div></form><div class="assistant-footer"><LockKeyhole :size="11" />权限由服务端校验<span v-if="budget">占用 ¥{{ budgetExposure.toFixed(2) }} / ¥{{ Number(budget.cap_rmb || 0).toFixed(2) }}</span><span v-else>{{ isMock ? '外部模型费用 $0' : '费用以服务端记录为准' }}</span></div></div></aside></div>
+        <aside class="assistant-panel panel"><div class="assistant-heading"><span class="assistant-logo"><Sparkles :size="18" /></span><div><h2>销售分析助手</h2><span>{{ isLive ? 'Deep Agents · 受控查询' : isMock ? 'Deep Agents · 离线确定性模型' : '正在确认执行模式' }}</span></div><button class="icon-button" title="新建会话并重置上下文" aria-label="新建会话并重置上下文" :disabled="busy" @click="newConversation()"><Plus :size="18" /></button></div><div class="assistant-context"><span class="tiny-dot"></span>{{ busy ? activityLabel : '可连续追问' }}<span>{{ conversation ? `会话 ${conversation.id.slice(0, 6)}` : '连接中' }}</span></div><div ref="chatBody" class="chat-body" role="log" aria-label="分析对话"><div v-if="welcome" class="assistant-welcome"><span class="welcome-mark"><Sparkles :size="23" /></span><h3>你好，想了解哪些销售表现？</h3><p>你可以问趋势、期间对比和变化贡献。<br />我会展示采用的口径与数据来源。</p><button v-for="sample in defaultSamples" :key="sample.title" @click="useSample(sample.text)" :disabled="busy">{{ sample.title }}<ChevronRight :size="14" /></button><div class="welcome-tip"><CircleHelp :size="15" /><span>当前快照覆盖 2023–2025 年<br />建议在问题里写明日期</span></div></div><template v-for="(message, index) in messagesWithRun" :key="`${message.run_id || index}-${message.role}`"><div class="chat-message" :class="message.role"><div class="message-avatar" v-if="message.role === 'assistant'"><Sparkles :size="13" /></div><div class="message-content"><p>{{ message.content }}</p><button v-if="message.result_id" class="message-result-link" @click="showHistoryResult(message)" :disabled="busy"><BarChart3 :size="13" />查看这次结果<ArrowUpRight :size="12" /></button><span v-if="message.status" class="message-status">{{ statusLabel(message.status) }}</span></div></div></template><div v-if="busy" class="chat-message assistant"><div class="message-avatar"><Sparkles :size="13" /></div><div class="message-content working-message"><LoaderCircle :size="14" class="spin" />{{ cancelling ? '正在请求停止…' : activityLabel + '…' }}</div></div></div><div v-if="queryNotice" class="assistant-notice" role="status">{{ queryNotice }}</div><div v-if="queryError" class="assistant-error" role="alert"><CircleAlert :size="14" /><span>{{ queryError }}</span><button class="icon-button" aria-label="关闭错误提示" @click="queryError = ''"><X :size="13" /></button></div><div class="composer-wrap"><div v-if="!welcome && !busy" class="followup-chips"><button v-for="text in followups" :key="text" @click="useSample(text)">{{ text }}</button></div><form class="composer" @submit.prevent="submitQuery()"><label class="sr-only" for="query-input">向销售分析助手提问</label><textarea id="query-input" ref="input" v-model="prompt" placeholder="例如：2025 年销售额按月怎么变化？" rows="3" maxlength="2000" :disabled="busy" @keydown="handleKey"></textarea><div class="composer-bottom"><span>{{ prompt.length ? `${prompt.length}/2000` : 'Enter 发送 · Shift+Enter 换行' }}</span><button v-if="busy && !conversationTransition" type="button" class="stop-button" @click="cancelRun" :disabled="cancelling || !activeRun"><Square :size="12" fill="currentColor" />{{ cancelling ? '停止中' : '停止' }}</button><button v-else type="submit" class="send-button" :disabled="busy || !prompt.trim() || !conversation" aria-label="发送问题"><Send :size="15" /></button></div></form><div class="assistant-footer"><LockKeyhole :size="11" />权限由服务端校验<span v-if="budget">占用 ¥{{ budgetExposure.toFixed(2) }} / ¥{{ Number(budget.cap_rmb || 0).toFixed(2) }}</span><span v-else>{{ isMock ? '外部模型费用 $0' : '费用以服务端记录为准' }}</span></div></div></aside></div>
       </template>
       <template v-else-if="page === 'history'"><div class="page-heading"><div><div class="eyebrow">ANALYSIS HISTORY</div><h1>分析记录</h1><p>回到一个问题，接着把它想清楚</p></div><button class="button button-primary" :disabled="busy" @click="setPage('overview'); newConversation()"><Plus :size="16" />新建分析</button></div><section class="panel history-panel"><div class="panel-heading"><div><h2>最近会话</h2><p>本浏览器保存会话索引；消息、权限和结果以服务端记录为准</p></div><History :size="19" class="muted" /></div><div v-if="!recent.length" class="empty-state"><MessageSquareText :size="30" /><h3>还没有分析记录</h3><p>问一个销售问题后，就能在这里继续会话</p></div><button v-for="item in recent" :key="item.id" class="history-row" :disabled="busy" @click="openConversation(item.id)"><span class="history-icon"><MessageSquareText :size="18" /></span><span class="history-row-title"><strong>{{ item.title }}</strong><small>{{ new Date(item.date).toLocaleString('zh-CN') }} · {{ item.id.slice(0, 8) }}</small></span><ChevronRight :size="17" /></button></section></template>
       <template v-else-if="page === 'definitions'"><div class="page-heading"><div><div class="eyebrow">METRIC DICTIONARY</div><h1>统一口径，可信分析</h1><p>固定五个指标。计算由程序执行，模型不能改写公式。</p></div><span class="scope-chip">USD · 订单日期</span></div><div class="definitions-grid"><article v-for="(metric, index) in METRICS" :key="metric.id" class="panel definition-card"><div><span class="definition-index">0{{ index + 1 }}</span><span class="subtle-tag">{{ metric.unit }}</span></div><h2>{{ metric.label }}</h2><span class="definition-key">{{ metric.id }}</span><p>{{ metric.definition }}</p></article><article class="panel definition-card definition-boundary"><div class="section-label"><ShieldCheck :size="18" />分析边界</div><h2>知道数字，也知道边界</h2><ul><li>仅分析获授权的模拟销售订单</li><li>不提供支付、实际退款或取消率</li><li>金额变化贡献不能证明业务因果</li><li>零分母变化率与平均值显示为不适用</li><li>每次查询最多两个指标、366 天</li></ul></article></div></template>

@@ -2,7 +2,7 @@ from datetime import date
 from enum import StrEnum
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
 
 class StrictModel(BaseModel):
@@ -63,10 +63,14 @@ class QuerySpec(StrictModel):
     comparison: Period | None = None
     group_by: list[Dimension] = Field(default_factory=list, max_length=2)
     filters: list[DimensionFilter] = Field(default_factory=list, max_length=8)
-    analysis: Literal["summary", "compare", "contribution"] = "summary"
+    analysis: Literal["summary", "compare", "contribution"] = Field(
+        default="summary", description="瀑布图必须使用 contribution，且明确两个期间、非时间分组和单一可加总指标"
+    )
     sort: Sort | None = None
     limit: int = Field(default=20, ge=1, le=100)
-    chart: Literal["table", "line", "bar", "waterfall", "none"] = "bar"
+    chart: Literal["table", "line", "bar", "waterfall", "none"] = Field(
+        default="bar", description="waterfall 仅适用于已对账的 contribution，不能直接展示普通 compare"
+    )
     base_result_id: str | None = None
 
     @model_validator(mode="after")
@@ -97,6 +101,23 @@ class QuerySpec(StrictModel):
         if self.sort and self.sort.field not in output:
             raise ValueError("排序字段必须存在于结果中")
         return self
+
+
+def normalize_query_intent(raw: dict) -> dict:
+    """Repair only a complete waterfall comparison's internal analysis label.
+
+    Used at the shared mock/live tool boundary, before the strict gateway. Never
+    infer periods, metrics or groups, and never modify an existing frozen result.
+    Full validation of the candidate keeps every schema safety check intact.
+    """
+    if raw.get("chart") != "waterfall" or raw.get("analysis") != "compare":
+        return raw
+    candidate = {**raw, "analysis": "contribution"}
+    try:
+        QuerySpec.model_validate(candidate)
+    except ValidationError:
+        return raw
+    return candidate
 
 
 class RunRequest(StrictModel):

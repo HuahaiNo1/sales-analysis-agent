@@ -16,7 +16,7 @@ from fastapi.responses import JSONResponse
 from psycopg.types.json import Jsonb
 from pydantic import ValidationError
 
-from .agent import run_agent, runtime_smoke_check
+from .agent import AgentToolError, run_agent, runtime_smoke_check
 from .budget import shared_budget
 from .catalog import DIMENSIONS, METRICS
 from .config import settings
@@ -367,7 +367,7 @@ async def process_run(run_id: str, identity: Identity, message: str, previous: d
             )
             if isinstance(exc, ValidationError):
                 answer = "；".join(e["msg"] for e in exc.errors())
-            elif isinstance(exc, QueryError) or code.startswith("BUDGET"):
+            elif isinstance(exc, (QueryError, AgentToolError)) or code.startswith("BUDGET"):
                 answer = str(exc)
             else:
                 answer = "本次分析未完成，请缩小问题范围或稍后重试；未发布新结果"

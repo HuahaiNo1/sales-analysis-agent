@@ -94,7 +94,7 @@ test('real backend: login, dashboard, query, charts, CSV, follow-up, refresh, re
     await expect(result.getByRole('button', { name: '表格', exact: true })).toHaveAttribute('aria-pressed', 'true')
     await expect(result.locator('tbody tr')).toHaveCount(12)
     await expect(result.locator('thead')).toContainText('订单数')
-    await expect(page.locator('.assistant-footer')).toHaveText(budgetBefore)
+    await expect(page.locator('.assistant-footer')).toHaveText(budgetBefore, { useInnerText: true })
     const csv = page.waitForResponse(response => new URL(response.url()).pathname === `/api/results/${protectedResultId}/csv`)
     const downloading = page.waitForEvent('download')
     await result.getByRole('button', { name: '导出 CSV' }).click()
@@ -189,4 +189,65 @@ test('real backend: login, dashboard, query, charts, CSV, follow-up, refresh, re
     await page.screenshot({ path: testInfo.outputPath('05-mobile-dashboard.png'), fullPage: true })
   })
   expect(pageErrors).toEqual([])
+})
+
+test('delayed reset blocks rapid actions and routes the next query and follow-up to the new conversation', async ({ page, context }) => {
+  await login(page)
+  await expect(page.locator('.mode-badge')).toContainText('MOCK')
+  await ask(page, '2025年销售额按月看')
+  const oldConversationId = await page.evaluate(() => localStorage.getItem('contoso:admin:conversation'))
+  expect(oldConversationId).toBeTruthy()
+  const runConversationIds: string[] = []
+  page.on('request', request => {
+    const match = new URL(request.url()).pathname.match(/^\/api\/conversations\/([^/]+)\/runs$/)
+    if (request.method() === 'POST' && match) runConversationIds.push(match[1]!)
+  })
+  let releaseCreate!: () => void
+  let markCreateStarted!: () => void
+  const createGate = new Promise<void>(resolve => { releaseCreate = resolve })
+  const createStarted = new Promise<void>(resolve => { markCreateStarted = resolve })
+  await page.route('**/api/conversations', async route => {
+    if (route.request().method() === 'POST') { markCreateStarted(); await createGate }
+    await route.continue()
+  })
+  const createdResponse = page.waitForResponse(response => response.request().method() === 'POST' && new URL(response.url()).pathname === '/api/conversations')
+  const input = page.getByRole('textbox', { name: '向销售分析助手提问' })
+  await input.fill('2025年销售额按月看')
+  await page.getByRole('button', { name: '新建会话并重置上下文' }).click()
+  await page.getByRole('button', { name: '新建会话', exact: true }).click()
+  try {
+    await createStarted
+    await expect(input).toBeDisabled()
+    await expect(page.getByRole('button', { name: '发送问题', exact: true })).toBeDisabled()
+    await expect(page.getByRole('button', { name: '新建会话并重置上下文' })).toBeDisabled()
+    await expect(page.locator('.recent-link').first()).toBeDisabled()
+    await expect(page.getByRole('button', { name: '退出登录' })).toBeDisabled()
+    await expect(page.locator('.working-message')).toContainText('正在新建会话')
+    // Exercise handler guards as well as disabled controls, without relying on response timing.
+    await page.locator('.composer').dispatchEvent('submit')
+    await input.dispatchEvent('keydown', { key: 'Enter' })
+    await page.getByRole('button', { name: '新建会话并重置上下文' }).dispatchEvent('click')
+    await page.locator('.recent-link').first().dispatchEvent('click')
+    expect(runConversationIds).toEqual([])
+    expect(await page.evaluate(() => localStorage.getItem('contoso:admin:conversation'))).toBe(oldConversationId)
+  } finally { releaseCreate() }
+  const created = await (await createdResponse).json()
+  const newConversationId = created.id || created.conversation_id
+  expect(newConversationId).toBeTruthy()
+  expect(newConversationId).not.toBe(oldConversationId)
+  await expect(input).toBeEnabled()
+  await expect(page.locator('.chat-message.user')).toHaveCount(0)
+  expect(await page.evaluate(() => localStorage.getItem('contoso:admin:conversation'))).toBe(newConversationId)
+  await ask(page, '2025年销售额按月看')
+  await ask(page, '按门店看')
+  const result = page.locator('.query-result-anchor .result-card')
+  await result.getByRole('button', { name: '表格', exact: true }).click()
+  await expect(result.locator('th').first()).toHaveText('门店')
+  expect(runConversationIds).toEqual([newConversationId, newConversationId])
+  const restored = await (await context.request.get(`/api/conversations/${newConversationId}`)).json()
+  expect((restored.messages || restored.history).filter((message: { role: string }) => message.role === 'user').map((message: { content: string }) => message.content)).toEqual(['2025年销售额按月看', '按门店看'])
+  await page.reload()
+  await expect(page.locator('.chat-message.user')).toHaveCount(2)
+  await page.locator('.query-result-anchor .result-card').getByRole('button', { name: '表格', exact: true }).click()
+  await expect(page.locator('.query-result-anchor th').first()).toHaveText('门店')
 })

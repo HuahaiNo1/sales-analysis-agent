@@ -2,7 +2,7 @@
 // These isolated fixtures exist only in tests; the running app always uses the backend API.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
-import type { AnalysisResult, Run } from '../src/types'
+import type { AnalysisResult, Conversation, Run } from '../src/types'
 import App from '../src/App.vue'
 import QueryResult from '../src/components/QueryResult.vue'
 const mocks = vi.hoisted(() => ({ api: { me: vi.fn(), login: vi.fn(), logout: vi.fn(), catalog: vi.fn(), dashboard: vi.fn(), createConversation: vi.fn(), conversation: vi.fn(), startRun: vi.fn(), run: vi.fn(), cancel: vi.fn(), result: vi.fn(), download: vi.fn() } }))
@@ -22,6 +22,23 @@ beforeEach(() => {
 })
 afterEach(() => { wrapper?.unmount(); wrapper = undefined; vi.useRealTimers(); document.body.innerHTML = '' })
 function button(text: string) { return wrapper!.findAll('button').find(item => item.text() === text)! }
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  let reject!: (error: Error) => void
+  const promise = new Promise<T>((done, fail) => { resolve = done; reject = fail })
+  return { promise, resolve, reject }
+}
+async function mountExistingConversation() {
+  localStorage.setItem('contoso:admin:conversation', 'old-conversation')
+  localStorage.setItem('contoso:admin:recent', JSON.stringify([{ id: 'old-conversation', title: '原有分析', date: '2026-10-07' }]))
+  mocks.api.conversation.mockResolvedValue({ id: 'old-conversation', state_version: 4, latest_run_id: 'old-run', history: [{ role: 'user', content: '原有分析', run_id: 'old-run' }, { role: 'assistant', content: '原有结果', run_id: 'old-run', result_id: fixture.id }] })
+  mocks.api.run.mockResolvedValue({ run_id: 'old-run', status: 'succeeded', result: fixture })
+  wrapper = mount(App, { attachTo: document.body }); await flushPromises()
+}
+async function confirmReset() {
+  await wrapper!.find('[aria-label="新建会话并重置上下文"]').trigger('click')
+  await button('新建会话').trigger('click'); await flushPromises()
+}
 
 describe('focused UI state and rendering checks (not a real browser)', () => {
   it('shows no-data explicitly and keeps undefined average value nonnumeric', async () => {
@@ -83,6 +100,117 @@ describe('focused UI state and rendering checks (not a real browser)', () => {
     await button('新建会话').trigger('click'); await flushPromises()
     expect(mocks.api.createConversation).toHaveBeenCalledTimes(2)
     expect(wrapper.findAll('.chat-message.user')).toHaveLength(0)
+  })
+  it('blocks rapid send, reset, history and logout during delayed creation, then sends both turns to the new conversation', async () => {
+    await mountExistingConversation()
+    const created = deferred<Conversation>()
+    mocks.api.createConversation.mockReturnValueOnce(created.promise)
+    await wrapper!.find('#query-input').setValue('2025年销售额按月看')
+    await confirmReset()
+    expect(wrapper!.find('[role="dialog"]').exists()).toBe(false)
+    expect(wrapper!.find('.working-message').text()).toContain('正在新建会话')
+    for (const selector of ['#query-input', '.send-button', '[aria-label="新建会话并重置上下文"]', '.recent-link', '[aria-label="退出登录"]']) {
+      expect(wrapper!.find(selector).attributes('disabled')).toBeDefined()
+    }
+    expect(wrapper!.find('.stop-button').exists()).toBe(false)
+    // Dispatch directly as well: stale/queued events must be gated by handlers, not just the DOM.
+    await wrapper!.find('.composer').trigger('submit')
+    wrapper!.find('#query-input').element.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+    for (const selector of ['[aria-label="新建会话并重置上下文"]', '.recent-link', '[aria-label="退出登录"]']) {
+      wrapper!.find(selector).element.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    }
+    await flushPromises()
+    expect(mocks.api.startRun).not.toHaveBeenCalled()
+    expect(mocks.api.createConversation).toHaveBeenCalledTimes(1)
+    expect(mocks.api.conversation).toHaveBeenCalledTimes(1)
+    expect(mocks.api.logout).not.toHaveBeenCalled()
+    expect(wrapper!.find('.chat-message.user').text()).toBe('原有分析')
+    expect(localStorage.getItem('contoso:admin:conversation')).toBe('old-conversation')
+
+    created.resolve({ id: 'new-conversation', state_version: 0 }); await flushPromises()
+    expect(wrapper!.find('#query-input').attributes('disabled')).toBeUndefined()
+    expect(wrapper!.findAll('.chat-message.user')).toHaveLength(0)
+    expect(wrapper!.find('.query-result-anchor .result-card').exists()).toBe(false)
+    expect(localStorage.getItem('contoso:admin:conversation')).toBe('new-conversation')
+    for (const [index, text] of ['2025年销售额按月看', '按门店看'].entries()) {
+      mocks.api.startRun.mockResolvedValueOnce({ run_id: `new-run-${index}`, status: 'succeeded', state_version: index + 1 })
+      mocks.api.run.mockResolvedValueOnce({ run_id: `new-run-${index}`, status: 'succeeded', result: fixture })
+      mocks.api.conversation.mockResolvedValueOnce({ id: 'new-conversation', state_version: index + 1 })
+      await wrapper!.find('#query-input').setValue(text)
+      await wrapper!.find('.composer').trigger('submit'); await flushPromises()
+      expect(mocks.api.startRun).toHaveBeenNthCalledWith(index + 1, 'new-conversation', text, index, expect.any(String))
+      expect(wrapper!.find('#query-input').attributes('disabled')).toBeUndefined()
+    }
+    expect(wrapper!.findAll('.chat-message.user').map(item => item.text())).toEqual(['2025年销售额按月看', '按门店看'])
+  })
+  it('failed creation releases the gate while preserving the original context and draft, and permits retry', async () => {
+    await mountExistingConversation()
+    const created = deferred<Conversation>()
+    mocks.api.createConversation.mockReturnValueOnce(created.promise)
+    await wrapper!.find('#query-input').setValue('待发送问题')
+    await confirmReset()
+    created.reject(new Error('隔离测试：新建会话失败')); await flushPromises()
+    expect(wrapper!.find('.assistant-error').text()).toContain('新建会话失败')
+    expect(wrapper!.find('#query-input').attributes('disabled')).toBeUndefined()
+    expect((wrapper!.find('#query-input').element as HTMLTextAreaElement).value).toBe('待发送问题')
+    expect(wrapper!.find('.chat-message.user').text()).toBe('原有分析')
+    expect(wrapper!.find('.query-result-anchor .result-card').exists()).toBe(true)
+    expect(localStorage.getItem('contoso:admin:conversation')).toBe('old-conversation')
+    expect(mocks.api.startRun).not.toHaveBeenCalled()
+    mocks.api.createConversation.mockResolvedValueOnce({ id: 'retry-conversation', state_version: 0 })
+    await confirmReset()
+    expect(mocks.api.createConversation).toHaveBeenCalledTimes(2)
+    expect(localStorage.getItem('contoso:admin:conversation')).toBe('retry-conversation')
+    expect(wrapper!.find('.assistant-error').exists()).toBe(false)
+    expect(wrapper!.find('#query-input').attributes('disabled')).toBeUndefined()
+  })
+  it('holds the history-switch gate through result hydration and keeps the old context if hydration fails', async () => {
+    await mountExistingConversation()
+    const loaded = deferred<Conversation>()
+    const result = deferred<AnalysisResult>()
+    mocks.api.conversation.mockReturnValueOnce(loaded.promise)
+    mocks.api.run.mockResolvedValueOnce({ run_id: 'history-run', status: 'succeeded', result_id: 'history-result' })
+    mocks.api.result.mockReturnValueOnce(result.promise)
+    await wrapper!.find('#query-input').setValue('不能发到旧会话')
+    await wrapper!.find('.recent-link').trigger('click'); await flushPromises()
+    expect(wrapper!.find('.working-message').text()).toContain('正在读取会话')
+    await wrapper!.find('.composer').trigger('submit')
+    expect(mocks.api.startRun).not.toHaveBeenCalled()
+    loaded.resolve({ id: 'history-conversation', state_version: 7, latest_run_id: 'history-run', history: [{ role: 'user', content: '历史会话' }] })
+    await flushPromises()
+    expect(wrapper!.find('#query-input').attributes('disabled')).toBeDefined()
+    expect(wrapper!.find('.chat-message.user').text()).toBe('原有分析')
+    result.reject(new Error('隔离测试：历史结果读取失败')); await flushPromises()
+    expect(wrapper!.find('#query-input').attributes('disabled')).toBeUndefined()
+    expect(wrapper!.find('.assistant-error').text()).toContain('历史结果读取失败')
+    expect(wrapper!.find('.chat-message.user').text()).toBe('原有分析')
+    expect(localStorage.getItem('contoso:admin:conversation')).toBe('old-conversation')
+    expect(wrapper!.find('.query-result-anchor .result-card').exists()).toBe(true)
+  })
+  it.each(['success', 'failure'])('ignores a stale historical result %s after reset switches generation', async outcome => {
+    await mountExistingConversation()
+    const result = deferred<AnalysisResult>()
+    mocks.api.result.mockReturnValueOnce(result.promise)
+    await wrapper!.find('.message-result-link').trigger('click'); await flushPromises()
+    mocks.api.createConversation.mockResolvedValueOnce({ id: 'new-conversation', state_version: 0 })
+    await confirmReset()
+    if (outcome === 'success') result.resolve(fixture)
+    else result.reject(new Error('不应显示的旧错误'))
+    await flushPromises()
+    expect(wrapper!.find('.query-result-anchor .result-card').exists()).toBe(false)
+    expect(wrapper!.find('.assistant-error').exists()).toBe(false)
+    expect(wrapper!.findAll('.chat-message.user')).toHaveLength(0)
+    expect(localStorage.getItem('contoso:admin:conversation')).toBe('new-conversation')
+    expect(mocks.api.run).toHaveBeenCalledTimes(1)
+  })
+  it('does not publish a late creation response after unmount', async () => {
+    await mountExistingConversation()
+    const created = deferred<Conversation>()
+    mocks.api.createConversation.mockReturnValueOnce(created.promise)
+    await confirmReset()
+    wrapper!.unmount(); wrapper = undefined
+    created.resolve({ id: 'stale-conversation', state_version: 0 }); await flushPromises()
+    expect(localStorage.getItem('contoso:admin:conversation')).toBe('old-conversation')
   })
   it('presentation props switch the same immutable result without mutating its payload', async () => {
     const original = JSON.stringify(fixture)

@@ -1,0 +1,6 @@
+# Reviewed generator input is hashed as bytes; Windows checkout must keep LF.
+/data/provenance/generator-config.json text eol=lf
+/data/provenance/input-data.xlsx -text
+# Shell scripts and the recorded upstream patch also require stable LF bytes.
+/scripts/*.sh text eol=lf
+/data/provenance/linux-build.patch text eol=lf

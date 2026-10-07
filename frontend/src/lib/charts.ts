@@ -13,8 +13,16 @@ export function dimensionKeys(result: AnalysisResult): string[] {
   return result.columns.filter(column => !metrics.includes(column.key) && !column.key.startsWith('comparison_') && !column.key.startsWith('delta_') && !column.key.startsWith('change_pct_') && !column.key.startsWith('contribution_') && !['number','currency','integer','decimal','percent'].includes(column.kind || '')).map(column => column.key)
 }
 export function isLineAllowed(result: AnalysisResult): boolean { return dimensionKeys(result).some(key => TIME_KEYS.has(key)) }
+export function waterfallUnavailableReason(result: AnalysisResult): string | null {
+  const metrics = metricKeys(result)
+  if (metrics.length !== 1) return '瀑布图需要单一指标；请单独查询销售额、销量或商品毛利的两期贡献'
+  if (!['sales_amount', 'gross_profit', 'units_sold'].includes(metrics[0] || '')) return '订单数和平均订单金额不能做加总贡献拆解；请改选销售额、销量或商品毛利'
+  if (!result.comparison_totals) return '当前没有对比期数据，瀑布图需先查询两个期间的贡献变化'
+  if (result.query?.analysis !== 'contribution') return '当前结果不是完整贡献拆解，瀑布图需先按类别、商品或门店等拆解两期变化'
+  return null
+}
 export function isWaterfallAllowed(result: AnalysisResult): boolean {
-  return result.query?.analysis === 'contribution' && Boolean(result.comparison_totals) && metricKeys(result).length === 1 && ['sales_amount', 'gross_profit', 'units_sold'].includes(metricKeys(result)[0] || '')
+  return waterfallUnavailableReason(result) === null
 }
 export function preferredChart(result: AnalysisResult): ChartType {
   const chart = result.chart?.type || result.query?.chart

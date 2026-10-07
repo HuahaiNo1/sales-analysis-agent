@@ -163,7 +163,8 @@ async function submitQuery(text = prompt.value) {
     messages.value.push({ role: 'user', content: message, run_id: activeRun.value.run_id, created_at: new Date().toISOString() })
     rememberConversation(messages.value.find(item => item.role === 'user')?.content || message)
     prompt.value = ''; scrollChat(); liveAnnouncement.value = '问题已提交，正在查询'
-    if (TERMINAL_STATUSES.has(result.status)) await finishRun(activeRun.value, currentGeneration)
+    // Submission acknowledgements omit the result, presentation and budget, even for completed runs.
+    if (TERMINAL_STATUSES.has(result.status)) await pollRun(activeRun.value.run_id, currentGeneration)
     else void pollRun(activeRun.value.run_id, currentGeneration)
   } catch (error) {
     if (error instanceof ApiError && error.status === 409 && conversation.value) { try { const updated = await api.conversation(conversation.value.id); conversation.value.state_version = updated.state_version } catch { /* The next retry will surface connection errors. */ } }

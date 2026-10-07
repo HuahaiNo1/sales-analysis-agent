@@ -27,7 +27,7 @@
 
 ## 快速启动（当前 Debian 13 云端开发环境）
 
-需要 Python 3.12、uv、Node.js 20+。依赖版本已由 uv.lock 与 frontend/package-lock.json 锁定。
+需要 Python 3.12、uv，推荐 Node.js 24.19.0（见 `.node-version`）。当前锁定依赖要求 Node `^22.22.2 || ^24.15.0 || >=26.0.0`，不是任意 20+。依赖版本已由 uv.lock 与 frontend/package-lock.json 锁定。
 
 ```bash
 uv sync --frozen
@@ -44,7 +44,21 @@ bash scripts/dev.sh
 
 这些是本地 URL，并非公开部署。`scripts/dev.sh` 在同一个生命周期中启动本地 PostgreSQL、导入已验证数据、启动 API 与前端；保持此命令运行，Ctrl+C 关闭服务。数据已有时不会重新生成或覆盖。在按命令隔离网络的执行器中，应把依赖进程和测试放在同一启动脚本中，不能假定另一命令可连到前一次的 localhost。
 
-上述 PostgreSQL 安装脚本只向 runtime/ 解包官方 Debian 包，不需要 root，不修改系统数据库。它是本地演示开发方案；演示数据库只监听本机，使用本地 trust 认证。请勿把此认证配置开放到外网。其他操作系统请自行使用受支持的 PostgreSQL 17 服务并设置 `.env` 中的连接串。
+上述 PostgreSQL 安装脚本只向 runtime/ 解包官方 Debian 包，不需要 root，不修改系统数据库。它是本地演示开发方案；演示数据库只监听本机，使用本地 trust 认证。请勿把此认证配置开放到外网。
+
+### Windows 原生路径
+
+Windows 使用已有的官方 PostgreSQL 17 安装和 Python 启动器，不运行 Debian 安装脚本。完整前置工具、固定 .NET SDK、生成和验证命令见 [Windows 指南](docs/windows.md)。当前仅在云端检查过代码和隔离单测，尚未完成 Windows 实机验收。
+
+```powershell
+uv sync --frozen --python 3.12
+npm --prefix frontend ci
+# 没有 data/processed 时，先按 Windows 指南安装官方 .NET SDK 8.0.425
+.\.venv\Scripts\python.exe scripts\contoso_generate.py
+.\.venv\Scripts\python.exe scripts\dev_windows.py
+```
+
+已有生成数据时跳过生成命令。脚本只使用本机独立开发数据库，并保留已有数据和预算账本；不安装 PostgreSQL、不改系统服务或防火墙。
 
 ### 从官方源重新生成数据（已有数据无需执行）
 
@@ -72,10 +86,13 @@ bash scripts/contoso_generate.sh
 bash scripts/test.sh                 # PostgreSQL + 关键后端/Agent回归；强制mock
 npm --prefix frontend run build      # TypeScript + production build
 npm --prefix frontend test           # 前端关键格式/图表单测
+# 首次 E2E 前：在 frontend 目录执行 npx playwright install chromium
 bash scripts/dev.sh --test-e2e       # 同生命周期启动全栈 + 本地Chromium浏览器测试；强制mock
 ```
 
 测试采用小而针对性的集合：五指标手算夹具、只读/RLS、跨账号结果隔离、AOV 禁用范围、比较/贡献对账、CSV 安全、真实 DeepAgents 工具边界、预算并发上限与失败保守记账、主要 UI 交互。已有一条真实模型 API 场景通过，其他问法不作扩大推断；浏览器 E2E 仍被环境阻塞，不能把 mock 或 API 成功当成页面验收通过。
+
+Playwright 默认使用自己安装的对应版本 Chromium。已有 Linux Chromium 可显式设置 `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium`；不再把该 Linux 路径作为所有平台的默认值。2026-10-07 修复和验证范围见 [本轮修复记录](docs/acceptance-fixes-2026-10-07.md)。
 
 ## 代码地图
 

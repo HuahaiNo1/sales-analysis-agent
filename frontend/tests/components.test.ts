@@ -2,7 +2,7 @@
 // These isolated fixtures exist only in tests; the running app always uses the backend API.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
-import type { AnalysisResult } from '../src/types'
+import type { AnalysisResult, Run } from '../src/types'
 import App from '../src/App.vue'
 import QueryResult from '../src/components/QueryResult.vue'
 const mocks = vi.hoisted(() => ({ api: { me: vi.fn(), login: vi.fn(), logout: vi.fn(), catalog: vi.fn(), dashboard: vi.fn(), createConversation: vi.fn(), conversation: vi.fn(), startRun: vi.fn(), run: vi.fn(), cancel: vi.fn(), result: vi.fn(), download: vi.fn() } }))
@@ -96,6 +96,43 @@ describe('focused UI state and rendering checks (not a real browser)', () => {
     expect(button('瀑布').attributes('aria-pressed')).toBe('false')
     expect(JSON.stringify(fixture)).toBe(original)
   })
+  it('shows a visible reason beside a disabled waterfall button, including compact charts', async () => {
+    wrapper = mount(QueryResult, { props: { result: fixture, compact: true } })
+    await flushPromises()
+    const waterfall = button('瀑布')
+    expect(waterfall.attributes('disabled')).toBeDefined()
+    expect(waterfall.attributes('aria-label')).toBe('瀑布')
+    const reason = wrapper.find('.waterfall-hint')
+    expect(reason.exists()).toBe(true)
+    expect(reason.text()).toContain('没有对比期数据')
+    expect(waterfall.attributes('aria-describedby')).toBe(reason.attributes('id'))
+    await waterfall.trigger('click')
+    expect(button('表格').attributes('aria-pressed')).toBe('true')
+    await wrapper.setProps({ result: { ...fixture, metrics: ['sales_amount', 'order_count'] } })
+    expect(wrapper.find('.waterfall-hint').text()).toContain('单一指标')
+  })
+  it('enables waterfall for a contribution result and preserves it through table and bar switches', async () => {
+    const contribution: AnalysisResult = {
+      ...fixture, query: { ...fixture.query, analysis: 'contribution', group_by: ['category'] },
+      columns: [{ key: 'category', label: '类别', kind: 'dimension' }, { key: 'sales_amount', label: '销售额', kind: 'money' }],
+      rows: [{ category: 'A', sales_amount: '100', delta_sales_amount: '-20' }],
+      comparison_totals: { sales_amount: '120' }, chart: { type: 'bar', x: 'category' },
+    }
+    const original = JSON.stringify(contribution)
+    wrapper = mount(QueryResult, { props: { result: contribution } })
+    await flushPromises()
+    expect(button('瀑布').attributes('disabled')).toBeUndefined()
+    expect(wrapper.find('.waterfall-hint').exists()).toBe(false)
+    for (const label of ['瀑布', '表格', '柱状', '瀑布']) {
+      await button(label).trigger('click'); await flushPromises()
+      expect(button(label).attributes('aria-pressed')).toBe('true')
+      expect(wrapper.find('table').exists()).toBe(label === '表格')
+    }
+    await wrapper.setProps({ presentationChart: 'table' })
+    await wrapper.setProps({ presentationChart: 'waterfall' }); await flushPromises()
+    expect(button('瀑布').attributes('aria-pressed')).toBe('true')
+    expect(JSON.stringify(contribution)).toBe(original)
+  })
   it('restores run presentation on refresh and accepts a same-result presentation-only follow-up', async () => {
     const original = JSON.stringify(fixture)
     localStorage.setItem('contoso:admin:conversation', 'test-conversation')
@@ -111,6 +148,49 @@ describe('focused UI state and rendering checks (not a real browser)', () => {
     result = wrapper.find('.query-result-anchor .result-card')
     expect(result.findAll('button').find(item => item.text() === '表格')!.attributes('aria-pressed')).toBe('true')
     expect(JSON.stringify(fixture)).toBe(original)
+  })
+  it('hydrates a sparse synchronous display-only response before showing its result, CSV and budget', async () => {
+    const monthly: AnalysisResult = {
+      ...fixture,
+      query: { ...fixture.query, metrics: ['sales_amount', 'order_count'] },
+      metrics: ['sales_amount', 'order_count'],
+      columns: [...fixture.columns, { key: 'order_count', label: '订单数', kind: 'count' }],
+      rows: Array.from({ length: 12 }, (_, index) => ({ month: `2025-${String(index + 1).padStart(2, '0')}`, sales_amount: '100.00', order_count: '2' })),
+      totals: { sales_amount: '1200.00', order_count: '24' },
+      chart: { type: 'line', x: 'month' },
+    }
+    const original = JSON.stringify(monthly)
+    const runBudget = { spent_rmb: '0.037976', reserved_rmb: '2.113536', exposure_rmb: '2.151512', cap_rmb: '4.8', remaining_rmb: '2.648488' }
+    mocks.api.run.mockResolvedValue({ run_id: 'test-run', status: 'succeeded', result: monthly, result_id: monthly.id, budget: runBudget })
+    wrapper = mount(App, { attachTo: document.body }); await flushPromises()
+    await wrapper.find('#query-input').setValue('2025年销售额和订单数按月看')
+    await wrapper.find('.composer').trigger('submit'); await flushPromises()
+    expect(wrapper.find('.query-result-anchor .result-card').exists()).toBe(true)
+    expect(wrapper.find('.assistant-footer').text()).toContain('占用 ¥2.15 / ¥4.80')
+
+    // The POST response is only an acknowledgement, even when the run already succeeded.
+    mocks.api.startRun.mockResolvedValue({ run_id: 'display-run', status: 'succeeded', state_version: 2 })
+    let finishHydration!: (run: Run) => void
+    mocks.api.run.mockImplementationOnce(() => new Promise<Run>(resolve => { finishHydration = resolve }))
+    mocks.api.download.mockResolvedValue(undefined)
+    await wrapper.find('#query-input').setValue('换成表格')
+    await wrapper.find('.composer').trigger('submit'); await flushPromises()
+
+    expect(mocks.api.run).toHaveBeenLastCalledWith('display-run')
+    expect(wrapper.find('#query-input').attributes('disabled')).toBeDefined()
+    finishHydration({ run_id: 'display-run', status: 'succeeded', result: monthly, result_id: monthly.id, budget: runBudget, presentation: { chart_type: 'table', reused_result_id: monthly.id } })
+    await flushPromises()
+    const result = wrapper.find('.query-result-anchor .result-card')
+    expect(result.findAll('button').find(item => item.text() === '表格')!.attributes('aria-pressed')).toBe('true')
+    expect(result.findAll('tbody tr')).toHaveLength(12)
+    expect(result.find('thead').text()).toContain('订单数')
+    expect(wrapper.findComponent(QueryResult).props('result')).toEqual(monthly)
+    expect(wrapper.find('.assistant-footer').text()).toContain('占用 ¥2.15 / ¥4.80')
+    expect(wrapper.find('#query-input').attributes('disabled')).toBeUndefined()
+    expect(mocks.api.startRun).toHaveBeenCalledTimes(2)
+    await result.findAll('button').find(item => item.text() === '导出 CSV')!.trigger('click'); await flushPromises()
+    expect(mocks.api.download).toHaveBeenCalledWith(monthly.id)
+    expect(JSON.stringify(monthly)).toBe(original)
   })
 
 })

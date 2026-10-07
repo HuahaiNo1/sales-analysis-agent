@@ -342,18 +342,30 @@ def mock_plan(message: str, previous: dict | None, catalog: dict) -> tuple[dict 
     elif re.search(r"前\s*\d+", text):
         query["limit"] = int(re.search(r"前\s*(\d+)", text).group(1))
         query["sort"] = {"field": query["metrics"][0], "direction": "desc"}
+    requested_chart = None
     for word, chart in [("柱状", "bar"), ("折线", "line"), ("表格", "table"), ("瀑布", "waterfall")]:
         if word in text:
             query["chart"] = chart
+            requested_chart = chart
     if query.get("comparison"):
+        # A limit/filter follow-up retains a reconciled contribution query. A new
+        # time grouping instead asks for a period comparison, not a contribution.
+        keep_contribution = (
+            followup
+            and query.get("analysis") == "contribution"
+            and not set(query["group_by"]) & {"day", "week", "month"}
+            and not set(query["metrics"]) & {"order_count", "avg_order_value"}
+        )
         query["analysis"] = (
             "contribution"
-            if any(w in text for w in ("贡献", "哪些", "为什么", "原因", "来自"))
+            if requested_chart == "waterfall"
+            or keep_contribution
+            or any(w in text for w in ("贡献", "哪些", "为什么", "原因", "来自"))
             else "compare"
         )
         if query["analysis"] == "contribution" and not query["group_by"]:
             query["group_by"] = ["category"]
-            query["chart"] = "bar"
+            query["chart"] = requested_chart or "bar"
     elif any(w in text for w in ("对比", "比较", "下降", "增长", "为什么", "原因", "贡献")):
         return None, "NEEDS_CLARIFICATION: 请明确两个比较期间，例如：2025年9月比8月销售额变化，按类别看"
     if any(w in text for w in ("换成", "只看")) and "门店" in text:

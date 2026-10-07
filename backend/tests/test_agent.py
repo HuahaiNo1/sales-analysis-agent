@@ -106,6 +106,72 @@ def test_documented_mock_queries_produce_valid_specs(message):
     QuerySpec.model_validate(query)
 
 
+@pytest.mark.parametrize(
+    "message",
+    [
+        "2025年9月比8月销售额贡献，用瀑布图",
+        "2025年9月比8月销售额，按类别用瀑布图",
+        "2025年9月比8月销售额，用瀑布图",
+    ],
+)
+def test_explicit_waterfall_keeps_chart_and_infers_contribution(message):
+    query, error = mock_plan(message, None, CATALOG)
+    assert not error
+    validated = QuerySpec.model_validate(query)
+    assert validated.chart == "waterfall"
+    assert validated.analysis == "contribution"
+    assert validated.group_by == ["category"]
+
+
+def test_waterfall_limit_followup_preserves_contribution_but_time_grouping_changes_it():
+    previous, _ = mock_plan("2025年9月比8月销售额变化来自哪些类别，用瀑布图", None, CATALOG)
+    patched, error = mock_plan("只看前十", previous, CATALOG)
+    assert not error
+    validated = QuerySpec.model_validate(patched)
+    assert validated.limit == 10
+    assert validated.analysis == "contribution"
+    assert validated.chart == "waterfall"
+    assert previous["limit"] == 20
+    assert patched["comparison"] == previous["comparison"]
+    monthly, error = mock_plan("按月看", previous, CATALOG)
+    assert not error
+    validated = QuerySpec.model_validate(monthly)
+    assert validated.analysis == "compare"
+    assert validated.chart == "line"
+    orders, error = mock_plan("订单数按门店看", previous, CATALOG)
+    assert not error
+    validated = QuerySpec.model_validate(orders)
+    assert validated.analysis == "compare"
+    assert validated.chart == "bar"
+
+
+@pytest.mark.parametrize("message, dimension", [("按类别看", "category"), ("按门店看", "store")])
+def test_compatible_contribution_followup_remains_eligible_for_waterfall(message, dimension):
+    previous, _ = mock_plan("2025年9月比8月销售额变化来自哪些类别，用瀑布图", None, CATALOG)
+    patched, error = mock_plan(message, previous, CATALOG)
+    assert not error
+    validated = QuerySpec.model_validate(patched)
+    assert validated.group_by == [dimension]
+    assert validated.analysis == "contribution"
+    QuerySpec.model_validate({**patched, "chart": "waterfall"})
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        "2025年销售额按类别用瀑布图",
+        "2025年9月比8月销售额按月用瀑布图",
+        "2025年9月比8月订单数按类别用瀑布图",
+        "2025年9月比8月销售额和销量按类别用瀑布图",
+    ],
+)
+def test_explicit_waterfall_does_not_bypass_query_compatibility(message):
+    query, error = mock_plan(message, None, CATALOG)
+    assert not error
+    with pytest.raises(ValueError):
+        QuerySpec.model_validate(query)
+
+
 def test_followup_is_copy_and_patches_only_business_fields():
     previous, _ = mock_plan("2025年销售额按类别看", None, CATALOG)
     patched, _ = mock_plan("只看前十", previous, CATALOG)

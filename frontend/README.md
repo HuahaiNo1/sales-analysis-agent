@@ -6,6 +6,8 @@ Vue 3 + TypeScript + Vite 的中文销售分析工作台。图表使用 Apache E
 
 建议从项目根目录运行统一启动脚本，以保证 PostgreSQL、FastAPI 和 Vite 位于同一执行环境：
 
+Node 推荐 24.19.0；锁定依赖需要 `^22.22.2 || ^24.15.0 || >=26.0.0`。Windows 统一启动见 [Windows 指南](../docs/windows.md)，使用 `scripts/dev_windows.py`。
+
 ```bash
 cd /workspace/shared/sales-analysis-agent
 scripts/dev.sh
@@ -59,7 +61,7 @@ npm test
 scripts/dev.sh --test-e2e
 ```
 
-测试默认使用 `/usr/bin/chromium`，可通过 `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` 指定测试环境已有的 Chromium。覆盖登录、KPI/API 一致性、日期校验、月度查询、图表/表格、CSV、多轮追问、刷新恢复、贡献瀑布、拒绝/澄清、重置与历史、两个账号的跨结果访问拒绝和移动端布局。
+测试默认使用 Playwright 管理的 Chromium；先在本目录执行 `npx playwright install chromium`。可通过 `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` 显式指定测试环境已有的 Chromium，Linux 如 `/usr/bin/chromium`；不设置时不依赖系统路径。覆盖登录、KPI/API 一致性、日期校验、月度查询、图表/表格、CSV、多轮追问、刷新恢复、贡献瀑布、拒绝/澄清、重置与历史、两个账号的跨结果访问拒绝和移动端布局。
 
 截图、失败 trace 和 JSON 测试结果位于 `frontend/test-results/`，这些文件不纳入版本控制。最终通过与未运行项以项目验收记录为准。
 
@@ -102,3 +104,5 @@ scripts/dev.sh --test-e2e
 - ECharts 拆分块约 574 kB（gzip 约 195 kB）触发 Vite 非阻断体积提示；该块已经按需加载，登录页面不提前渲染图表
 
 收尾补充：同一不可变结果的展示类型切换、刷新恢复与聊天纯展示追问接入已完成；新增 2 项针对性组件测试通过，累计前端测试 18 项。该补充没有运行新的浏览器或模型调用。
+
+2026-10-07 后续修复：同步完成的展示追问也会读取完整运行结果后再结束前端等待；新增一项防止该竞态的组件回归。19 项前端测试、TypeScript 和生产构建通过。E2E 增加展示复用断言、退出登录完成等待，以及手机导航收起等待；只完成测试发现/类型检查，未在本次云端执行浏览器。详见 [本轮修复记录](../docs/acceptance-fixes-2026-10-07.md)。

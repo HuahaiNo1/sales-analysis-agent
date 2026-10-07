@@ -142,6 +142,48 @@ def wait_result(client, rid):
     raise AssertionError("Run timed out")
 
 
+def test_waterfall_business_followups_and_display_reuse_remain_reconciled():
+    from app.budget import shared_budget
+
+    budget = shared_budget().snapshot()
+    with TestClient(app) as client:
+        client.post("/api/auth/login", json={"username": "admin", "password": "demo123"})
+        cid = client.post("/api/conversations").json()["id"]
+        previous_result = None
+        for version, message in enumerate(
+            ["2025年9月比8月销售额，按类别用瀑布图", "按门店看", "只看前3", "换成瀑布图"]
+        ):
+            submitted = client.post(
+                f"/api/conversations/{cid}/runs",
+                json={
+                    "message": message,
+                    "client_request_id": str(uuid4()),
+                    "expected_state_version": version,
+                },
+            )
+            assert submitted.status_code == 202
+            outcome = wait_result(client, submitted.json()["run_id"])
+            assert outcome["status"] == "succeeded", outcome
+            result = outcome["result"]
+            assert result["query"]["analysis"] == "contribution"
+            QuerySpec.model_validate({**result["query"], "chart": "waterfall"})
+            assert sum(Decimal(row["delta_sales_amount"]) for row in result["rows"]) == Decimal(
+                result["totals"]["sales_amount"]
+            ) - Decimal(result["comparison_totals"]["sales_amount"])
+            if version == 0:
+                assert result["chart"]["type"] == "waterfall"
+            if version == 2:
+                assert result["truncated"] and len(result["rows"]) == 4
+                assert result["rows"][-1]["store"] == "其他分组（合计）"
+            if version == 3:
+                assert result == previous_result
+                assert outcome["presentation"]["chart_type"] == "waterfall"
+                assert outcome["runtime"]["model_calls"] == 0
+                assert outcome["runtime"]["aggregate_queries"] == 0
+            previous_result = result
+    assert shared_budget().snapshot() == budget
+
+
 def test_end_to_end_session_agent_results_csv_history_isolation():
     with TestClient(app) as client:
         assert client.get("/api/catalog").status_code == 401

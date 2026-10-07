@@ -12,6 +12,10 @@ export default defineConfig({
     viewport: { width: 1440, height: 1000 },
     screenshot: 'only-on-failure',
     trace: 'retain-on-failure',
-    launchOptions: { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || '/usr/bin/chromium', args: ['--disable-dev-shm-usage'] },
+    // Use Playwright's matching browser on every OS unless explicitly overridden.
+    launchOptions: {
+      executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || undefined,
+      args: process.platform === 'linux' ? ['--disable-dev-shm-usage'] : [],
+    },
   },
 })

@@ -89,6 +89,10 @@ CSV 文件均使用 UTF-8、英文 snake_case 字段；金额列读取为 Decima
 bash scripts/contoso_generate.sh
 ```
 
+Windows 或已安装固定 .NET SDK 8.0.425 的环境也可使用 `python scripts/contoso_generate.py`，先运行 `--verify-inputs` 可只检查配置和工作簿而不下载或生成。前置条件见 [Windows 指南](windows.md)。该路径保留相同源提交、输入哈希、生成参数和标准化门禁；额外只对 Windows 构建版本戳的输出路径加引号，不修改生成引擎。Windows 实机生成及逐字节重现尚未验证。
+
+Git 属性将有字节哈希的 `generator-config.json` 固定为 LF，工作簿保持二进制；不会为换行差异修改已审核的来源清单哈希。
+
 若已有原始数据，脚本会停止，防止覆盖已发布基准。要进行独立重跑：
 
 ```bash

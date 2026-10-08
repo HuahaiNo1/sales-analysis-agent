@@ -1,0 +1,76 @@
+{
+  "terminal_status": "passed",
+  "process_exit_code": 0,
+  "backend_tests": "127 passed in 21.49s",
+  "summary": {
+    "started_at": "2026-10-07T22:54:58.737510+00:00",
+    "finished_at": "2026-10-07T23:25:10.348949+00:00",
+    "soak_started_at": "2026-10-07T22:55:10.187634+00:00",
+    "soak_seconds": 1800.159,
+    "users": 2,
+    "round_interval_seconds": 60,
+    "completed_rounds": 30,
+    "unexpected_http_outcomes": 0,
+    "request_failures": 0,
+    "isolated_provider_reservations": 0,
+    "request_latency": {
+      "n": 219,
+      "p50_ms": 23.055,
+      "p95_ms": 116.174,
+      "max_ms": 277.376
+    },
+    "soak_request_latency": {
+      "n": 153,
+      "p50_ms": 24.53,
+      "p95_ms": 129.547,
+      "max_ms": 277.376
+    },
+    "run_latency": {
+      "n": 16,
+      "p50_ms": 709.616,
+      "p95_ms": 1733.187,
+      "max_ms": 1733.187
+    },
+    "soak_run_latency": {
+      "n": 12,
+      "p50_ms": 709.616,
+      "p95_ms": 1733.187,
+      "max_ms": 1733.187
+    },
+    "run_outcomes": {
+      "integration:review:succeeded": 3,
+      "integration:review:no_data": 1,
+      "soak:query:succeeded": 6,
+      "soak:review:succeeded": 6
+    },
+    "audit_counts": {
+      "run_agent": 23,
+      "query_metrics": 52
+    }
+  },
+  "assertions_passed": 33,
+  "intentional_scope_changed_run": {
+    "status": "failed",
+    "error_code": "SCOPE_CHANGED",
+    "published_result": false,
+    "query_specs_executed": 1
+  },
+  "audit_counts_note": "Raw audit file includes previous interrupted pre-scope-fix integration. Final run baseline was 6 run_agent/13 query_metrics; final-run delta is 17 run_agent/39 query_metrics. Invocation counts are not paid provider calls.",
+  "final_run_audit_delta": {
+    "run_agent": 17,
+    "query_metrics": 39
+  },
+  "not_run": [
+    "Real browser, mobile visual/download acceptance",
+    "Windows native execution",
+    "Live provider calls or real-budget reconciliation",
+    "Heavy-load or production authentication/public deployment",
+    "GitHub push"
+  ],
+  "artifacts": {
+    "final-integration-result.json": "e6ba446b0fb28f0262f561b9854bef948a4a27e7a9da04f8fce7e1706b163721",
+    "backend-tests.log": "ccd2c5e3a91256f2e89b03a177a5bda6f19f025a8f2ad1058ecd1e61c68fed1d",
+    "validated-backend-manifest.json": "7f450a980cf455cd7701da2894f9420401b538c2607001d5f7f8d0e01143e6c5",
+    "integration-console.log": "eb6bdabe585385a395c834bea646219ee51b7d4fed0b1be9e00b0d83fad617b3"
+  }
+}

@@ -2,7 +2,7 @@
 
 这条路径直接使用 Windows Python、Node.js 和 PostgreSQL，不需要 WSL、Bash、Debian 包或管理员方式运行项目。脚本只管理项目 `runtime/` 内的独立演示数据库，不安装软件、不注册 Windows 服务、不修改防火墙或系统 PostgreSQL 数据目录。
 
-本次在 Linux 云端完成静态检查与隔离单测，**尚未在 Windows 上执行这条启动/生成路径**。下列命令供 Windows 验证使用，不能据此称 Windows 已验收。
+用户已反馈旧版本 Windows 启动与 E2E 通过；本轮新增复盘/报告候选仍须在 Windows 实机复验。云端单测、真实 HTTP 验证和构建不等于 Windows 浏览器或用户人工验收。当前证据见 [STATUS](../STATUS.md) 与 [最终验证](final-verification.md)。
 
 ## 1. 准备已有工具
 
@@ -41,6 +41,7 @@ $env:POSTGRES_BIN = 'C:\Program Files\PostgreSQL\17\bin'
 ## 3. 统一启动
 
 ```powershell
+$env:AGENT_MODE = 'mock'
 .\.venv\Scripts\python.exe scripts\dev_windows.py
 ```
 
@@ -54,7 +55,19 @@ $env:POSTGRES_BIN = 'C:\Program Files\PostgreSQL\17\bin'
 
 普通 mock 演示不需要模型密钥。需要手动配置 `.env` 时，请遵循主 README 的真实调用授权和原有预算迁移要求；Windows 应使用当前用户可访问的文件权限，不使用 Unix `chmod`。不在聊天或源码中提交密钥，不删除或清空现有预算账本。
 
-## 4. 验证
+## 4. 已有版本升级与报告迁移
+
+先停止项目服务、备份私有运行数据并保留本地未提交改动，再更新候选源码。若收到源码包，把它与本地目录比较后合并；只有确认本轮改动已经推送到正确远端提交时才考虑拉取，不能默认 `git pull` 会取得未发布版本。
+
+启动脚本每次都会应用 `scripts/schema.sql`：用 `ADD COLUMN IF NOT EXISTS` 增补 `runs.kind/request_payload/review_payload`，用 `CREATE TABLE IF NOT EXISTS` 新建 `reports` 与所需索引/权限；不会通过删除旧会话、旧结果或销售事实完成迁移。独立费用账本不在这份 schema 中。销售数据已存在时，导入器复用原快照，不重新随机生成。
+
+不需要另装迁移框架或手工删库。schema 错误应先看 `runtime/dev-postgres.log`，修复具体问题后再启动；不要清空 `runtime` 作为排障办法。新机器/重建数据库不会自动拥有原报告，源码包也不携带数据库和预算。
+
+备份时先关闭使用这些文件的全部本项目进程，再在私有位置保留 `runtime/pgdata-windows`、预算账本及其伴随文件、已生成数据和必要的用户配置；不要把运行中的单个 PostgreSQL/SQLite 文件当作有效备份。原始数据目录备份仅用于兼容的本机 PostgreSQL 17 恢复，跨平台应使用 PostgreSQL 正式逻辑备份/恢复工具，不能把 Linux `pgdata` 直接搬给 Windows。密钥和账本不提交 Git、不装入公开源码 ZIP。重要报告可另导出 Markdown/HTML，方便服务中断时查看；导出文件不是可回写数据库的备份。
+
+更短的操作清单与可复制 Codex 交接见 [本地交接与人工验收](final-handoff.md)。
+
+## 5. 验证
 
 ```powershell
 .\.venv\Scripts\python.exe -m pytest -q scripts\tests\test_portability.py
@@ -72,3 +85,5 @@ Pop-Location
 Playwright 默认使用自己的跨平台 Chromium，不再寻找 `/usr/bin/chromium`。需要测试环境已有的浏览器时，可显式设置 `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` 为实际 exe 路径；通常保持未设置更可靠。安装与缓存行为见 [Playwright 官方浏览器说明](https://playwright.dev/docs/browsers)。
 
 E2E 使用真实 PostgreSQL/API 与本地 mock 模型，不是浏览器网络伪造响应；不产生外部模型费用。其通过结果也不能替代真实模型浏览器验收。
+
+本套件共 3 条 E2E（原工作台、延迟重置/快速动作、新复盘报告闭环）。先停止已有开发服务，再用测试入口统一管理服务。新增候选的实际浏览器结果未取得前，不将测试发现或旧 E2E 反馈写成通过。

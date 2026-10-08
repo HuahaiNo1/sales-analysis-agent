@@ -5,13 +5,16 @@ cd "$(dirname "$0")/.."
 mkdir -p runtime
 MODE="${1:-}"
 if [[ "$MODE" == --test-e2e || "$MODE" == --test-backend ]]; then
-  export AGENT_MODE=mock LANGSMITH_TRACING=false LANGCHAIN_TRACING_V2=false
+  export AGENT_MODE=mock SALES_DISABLE_ENV_FILE=1 LANGSMITH_TRACING=false LANGCHAIN_TRACING_V2=false
+  TEST_BUDGET_DIR="$(mktemp -d)"
+  export LLM_BUDGET_PATH="$TEST_BUDGET_DIR/llm-budget.sqlite3"
 fi
 scripts/start_postgres.sh > runtime/dev-postgres.log 2>&1
 cleanup() {
   [[ -n "${API_PID:-}" ]] && kill "$API_PID" 2>/dev/null || true
   [[ -n "${UI_PID:-}" ]] && kill "$UI_PID" 2>/dev/null || true
   LD_LIBRARY_PATH="$PWD/runtime/postgres/usr/lib/x86_64-linux-gnu" runtime/postgres/usr/lib/postgresql/17/bin/pg_ctl -D runtime/pgdata -m fast -w stop >/dev/null 2>&1 || true
+  [[ -n "${TEST_BUDGET_DIR:-}" ]] && rm -rf -- "$TEST_BUDGET_DIR" || true
 }
 trap cleanup EXIT INT TERM
 .venv/bin/python scripts/import_data.py

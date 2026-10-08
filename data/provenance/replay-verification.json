@@ -1,0 +1,36 @@
+{
+  "status": "passed",
+  "method": "Second unchanged official Engine execution with the same reviewed config, workbook, cache, runtime and source commit; compare every generated CSV byte hash",
+  "files": {
+    "currencyexchange.csv": {
+      "first_sha256": "5e4f5637089ab68cc17c69e7f24ab05dbf64b53f023f3b738b6e2a049179c93b",
+      "replay_sha256": "5e4f5637089ab68cc17c69e7f24ab05dbf64b53f023f3b738b6e2a049179c93b",
+      "identical": true
+    },
+    "customer.csv": {
+      "first_sha256": "c4657effe898ef1cbb638f40e15210e9ba4cc467a9d2ed18eeb34db167dc0d52",
+      "replay_sha256": "c4657effe898ef1cbb638f40e15210e9ba4cc467a9d2ed18eeb34db167dc0d52",
+      "identical": true
+    },
+    "date.csv": {
+      "first_sha256": "85cf27b02eefb2fbb5a99aee4bc1e069b7f7d0dd82240fd7c41d7a16f0500c07",
+      "replay_sha256": "85cf27b02eefb2fbb5a99aee4bc1e069b7f7d0dd82240fd7c41d7a16f0500c07",
+      "identical": true
+    },
+    "product.csv": {
+      "first_sha256": "442bd9804dee0f41d6d0a5eeac197bf8c3d2ece6a16d3a7e0414e574994010da",
+      "replay_sha256": "442bd9804dee0f41d6d0a5eeac197bf8c3d2ece6a16d3a7e0414e574994010da",
+      "identical": true
+    },
+    "sales.csv": {
+      "first_sha256": "3d306766b3b0ab23b746990fb8221b8fd79912c27b52fe7e82607f26a0f6579d",
+      "replay_sha256": "3d306766b3b0ab23b746990fb8221b8fd79912c27b52fe7e82607f26a0f6579d",
+      "identical": true
+    },
+    "store.csv": {
+      "first_sha256": "8e1efb4dcd03f89487550ae74f8d20367b42c10adfea3ff7102b56b2b37e9af9",
+      "replay_sha256": "8e1efb4dcd03f89487550ae74f8d20367b42c10adfea3ff7102b56b2b37e9af9",
+      "identical": true
+    }
+  }
+}

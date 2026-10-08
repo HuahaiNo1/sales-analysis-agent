@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 from pydantic import SecretStr
@@ -17,4 +18,4 @@ class Settings(BaseSettings):
     result_hours: int = 24
 
 
-settings = Settings()
+settings = Settings(_env_file=None) if os.environ.get("SALES_DISABLE_ENV_FILE") == "1" else Settings()

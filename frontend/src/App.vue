@@ -1,11 +1,14 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { Activity, ArrowDownToLine, ArrowRight, BarChart3, BookOpen, Check, ChevronRight, Database, History, LayoutDashboard, LoaderCircle, LogOut, MessageSquareText, PanelLeftClose, Plus, RefreshCw, Send, ShieldCheck, Sparkles, Square, X, CircleAlert, CircleHelp, ArrowUpRight, LockKeyhole, FileText } from '@lucide/vue'
 import type { AnalysisResult, Catalog, ChartType, Conversation, ConversationMessage, Dashboard, Run, User } from './types'
 import { api, ApiError, unwrapUser } from './lib/api'
 import { exclusiveEnd, formatValue, METRICS, periodLabel, statusLabel, TERMINAL_STATUSES } from './lib/format'
 import MetricCard from './components/MetricCard.vue'
 import QueryResult from './components/QueryResult.vue'
+import ReviewWorkspace from './views/ReviewWorkspace.vue'
+import ReportsWorkspace from './views/ReportsWorkspace.vue'
+import { useWorkspaceNavigation, type WorkspacePage } from './composables/useWorkspaceNavigation'
 const user = ref<User | null>(null)
 const booting = ref(true)
 const loginBusy = ref(false)
@@ -13,7 +16,21 @@ const loginError = ref('')
 const username = ref('admin')
 const password = ref('demo123')
 const catalog = ref<Catalog>({})
-const page = ref<'overview' | 'history' | 'definitions' | 'dataset'>('overview')
+const reportsWorkspace = ref<InstanceType<typeof ReportsWorkspace>>()
+const reviewBusy = ref(false)
+const reportBusy = ref(false)
+const { page, reportId, navigate } = useWorkspaceNavigation((next, cancelled) => {
+  if (page.value === 'reports' && reportsWorkspace.value) reportsWorkspace.value.requestNavigation(next, cancelled)
+  else next()
+})
+const reviewVisited = ref(page.value === 'review')
+const reportsVisited = ref(page.value === 'reports')
+const queryWorkspaceInitialized = ref(false)
+watch(page, value => {
+  if (value === 'review') reviewVisited.value = true
+  if (value === 'reports') reportsVisited.value = true
+  if (user.value && ['overview', 'history'].includes(value)) void initializeQueryWorkspace()
+})
 const sidebarOpen = ref(false)
 const dashboard = ref<Dashboard | null>(null)
 const dashboardBusy = ref(false)
@@ -40,6 +57,7 @@ const showResetConfirm = ref(false)
 const recent = ref<Array<{ id: string; title: string; date: string }>>([])
 let pollTimer: ReturnType<typeof setTimeout> | undefined
 let generation = 0
+let resultSelection = 0
 let dashboardController: AbortController | undefined
 let dashboardGeneration = 0
 const busy = computed(() => Boolean(conversationTransition.value) || submitting.value || Boolean(activeRun.value && !TERMINAL_STATUSES.has(activeRun.value.status)))
@@ -83,7 +101,8 @@ function rememberConversation(title: string) {
   safeStorageSet(storageKey('conversation'), item.id)
 }
 function scrollChat() { void nextTick(() => { if (chatBody.value) chatBody.value.scrollTop = chatBody.value.scrollHeight }) }
-function setPage(target: typeof page.value) { page.value = target; sidebarOpen.value = false }
+function setPage(target: WorkspacePage) { navigate(target); sidebarOpen.value = false }
+function openReport(id: string) { navigate('reports', id); sidebarOpen.value = false }
 function selectAccount(value: 'admin' | 'analyst') { username.value = value; password.value = 'demo123'; loginError.value = '' }
 async function login() {
   if (loginBusy.value) return
@@ -91,8 +110,15 @@ async function login() {
   try { await api.login(username.value.trim(), password.value); user.value = unwrapUser(await api.me()); password.value = ''; await initialize() } catch (error) { loginError.value = error instanceof Error ? error.message : '登录失败，请重试' } finally { loginBusy.value = false }
 }
 async function initialize() {
-  queryError.value = ''; queryNotice.value = ''; page.value = 'overview'; hydrateRecent()
+  queryError.value = ''; queryNotice.value = ''; hydrateRecent()
+  reviewVisited.value = page.value === 'review'; reportsVisited.value = page.value === 'reports'
   try { catalog.value = await api.catalog() } catch (error) { queryNotice.value = error instanceof Error ? error.message : '无法读取数据目录' }
+  // Opening a persisted report must never aggregate fresh dashboard data or revive a chat run.
+  if (['overview', 'history'].includes(page.value)) await initializeQueryWorkspace()
+}
+async function initializeQueryWorkspace() {
+  if (queryWorkspaceInitialized.value || !user.value) return
+  queryWorkspaceInitialized.value = true
   void loadDashboard()
   const saved = safeStorageGet(storageKey('conversation'))
   if (saved) {
@@ -235,25 +261,44 @@ async function finishRun(run: Run, currentGeneration: number) {
 async function cancelRun() {
   if (conversationTransition.value || !activeRun.value || TERMINAL_STATUSES.has(activeRun.value.status) || cancelling.value) return
   cancelling.value = true; queryError.value = ''
-  try { const runId = activeRun.value.run_id; const run = await api.cancel(runId); if (run.status && TERMINAL_STATUSES.has(run.status)) { activeRun.value = await api.run(runId); await finishRun(activeRun.value, generation) } } catch (error) { cancelling.value = false; queryError.value = error instanceof Error ? error.message : '停止请求未确认，请稍后重试' }
+  const currentGeneration = generation
+  const runId = activeRun.value.run_id
+  try {
+    const run = await api.cancel(runId)
+    if (currentGeneration !== generation) return
+    if (run.status && TERMINAL_STATUSES.has(run.status)) {
+      const updated = await api.run(runId)
+      if (currentGeneration !== generation) return
+      activeRun.value = updated
+      await finishRun(updated, currentGeneration)
+    }
+  } catch (error) {
+    if (currentGeneration !== generation) return
+    cancelling.value = false; queryError.value = error instanceof Error ? error.message : '停止请求未确认，请稍后重试'
+  }
 }
 async function showHistoryResult(message: ConversationMessage) {
   if (!message.result_id || busy.value) return
   const currentGeneration = generation
+  const currentSelection = ++resultSelection
   try {
     const result = await api.result(message.result_id)
-    if (currentGeneration !== generation) return
+    if (currentGeneration !== generation || currentSelection !== resultSelection) return
     const run = message.run_id ? await api.run(message.run_id) : null
-    if (currentGeneration !== generation) return
+    if (currentGeneration !== generation || currentSelection !== resultSelection) return
     currentResult.value = result
     currentPresentation.value = null
     if (run) applyRunPresentation(run)
     setPage('overview'); void nextTick(() => querySection.value?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
-  } catch (error) { if (currentGeneration === generation) queryError.value = error instanceof Error ? error.message : '结果读取失败' }
+  } catch (error) { if (currentGeneration === generation && currentSelection === resultSelection) queryError.value = error instanceof Error ? error.message : '结果读取失败' }
 }
 async function logout() {
-  if (busy.value) return
-  try { await api.logout(); generation++; clearTimeout(pollTimer); dashboardController?.abort(); dashboardGeneration++; user.value = null; conversation.value = null; currentResult.value = null; currentPresentation.value = null; messages.value = []; dashboard.value = null; catalog.value = {}; username.value = 'admin'; password.value = 'demo123' } catch (error) { queryError.value = error instanceof Error ? error.message : '退出失败' }
+  if (busy.value || reviewBusy.value || reportBusy.value) return
+  if (page.value === 'reports' && reportsWorkspace.value) { reportsWorkspace.value.requestNavigation(() => void performLogout()); return }
+  await performLogout()
+}
+async function performLogout() {
+  try { await api.logout(); generation++; clearTimeout(pollTimer); dashboardController?.abort(); dashboardGeneration++; user.value = null; queryWorkspaceInitialized.value = false; reviewVisited.value = false; reportsVisited.value = false; reviewBusy.value = false; reportBusy.value = false; conversation.value = null; currentResult.value = null; currentPresentation.value = null; messages.value = []; dashboard.value = null; catalog.value = {}; username.value = 'admin'; password.value = 'demo123' } catch (error) { queryError.value = error instanceof Error ? error.message : '退出失败' }
 }
 function useSample(text: string) { prompt.value = text; void nextTick(() => input.value?.focus()) }
 function handleKey(event: KeyboardEvent) { if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) { event.preventDefault(); void submitQuery() } }
@@ -271,9 +316,11 @@ onBeforeUnmount(() => { generation++; clearTimeout(pollTimer); dashboardControll
   </main>
   <div v-else class="app-shell">
     <div v-if="sidebarOpen" class="sidebar-backdrop" @click="sidebarOpen = false"></div>
-    <aside class="sidebar" :class="{ open: sidebarOpen }"><a class="brand" href="#" @click.prevent="setPage('overview')"><span class="brand-symbol"><BarChart3 :size="21" /></span><span>Contoso<span class="brand-sub">INSIGHT</span></span></a><div class="workspace-label">分析空间 <span>DEMO</span></div><nav aria-label="主导航"><button :class="{ active: page === 'overview' }" @click="setPage('overview')"><LayoutDashboard :size="18" />销售概览<span class="nav-active-dot" v-if="page === 'overview'"></span></button><button :class="{ active: page === 'history' }" @click="setPage('history')"><History :size="18" />分析记录<span v-if="recent.length" class="nav-count">{{ recent.length }}</span></button><button :class="{ active: page === 'definitions' }" @click="setPage('definitions')"><BookOpen :size="18" />指标口径</button><button :class="{ active: page === 'dataset' }" @click="setPage('dataset')"><Database :size="18" />数据与权限</button></nav><div class="sidebar-session"><div class="sidebar-section-title">最近的分析<button class="icon-button" :disabled="busy" @click="newConversation()" aria-label="新建分析"><Plus :size="15" /></button></div><button v-for="item in recent.slice(0, 4)" :key="item.id" class="recent-link" :title="item.title" :disabled="busy" @click="openConversation(item.id)"><MessageSquareText :size="14" /><span>{{ item.title }}</span></button><span v-if="!recent.length" class="sidebar-empty">还没有分析记录</span></div><div class="sidebar-bottom"><div class="dataset-card"><span class="tiny-dot"></span><div><strong>Contoso 模拟数据</strong><small>2023–2025 · USD</small></div><Database :size="16" /></div><div class="profile"><div class="avatar">{{ username === 'analyst' || user.username === 'analyst' ? 'A' : 'C' }}</div><div><strong>{{ user.display_name || (user.username === 'admin' ? '演示管理员' : '区域分析师') }}</strong><span>{{ scopeLabel }}</span></div><button class="icon-button" @click="logout" :disabled="busy" :title="busy ? '请先停止或等待当前分析完成' : '退出登录'" aria-label="退出登录"><LogOut :size="16" /></button></div></div></aside>
-    <div class="main-shell"><header class="topbar"><div class="breadcrumb"><button class="icon-button menu-toggle" aria-label="打开菜单" @click="sidebarOpen = !sidebarOpen"><PanelLeftClose :size="21" /></button><span>工作台</span><ChevronRight :size="13" /><strong>{{ ({ overview: '销售概览', history: '分析记录', definitions: '指标口径', dataset: '数据与权限' })[page] }}</strong></div><div class="topbar-status"><span class="mode-badge" :class="{ live: isLive }"><span class="tiny-dot"></span>{{ isLive ? 'LIVE · 模型模式' : modelMode === 'unknown' ? '模式待确认' : 'MOCK · 离线模型' }}</span><span class="topbar-divider"></span><span class="currency-label">USD</span><button class="icon-button" aria-label="查看数据与权限说明" @click="setPage('dataset')"><CircleHelp :size="18" /></button></div></header>
+    <aside class="sidebar" :class="{ open: sidebarOpen }"><a class="brand" href="#" @click.prevent="setPage('overview')"><span class="brand-symbol"><BarChart3 :size="21" /></span><span>Contoso<span class="brand-sub">INSIGHT</span></span></a><div class="workspace-label">分析空间 <span>DEMO</span></div><nav aria-label="主导航"><button :class="{ active: page === 'overview' }" @click="setPage('overview')"><LayoutDashboard :size="18" />销售概览<span class="nav-active-dot" v-if="page === 'overview'"></span></button><button :class="{ active: page === 'review' }" @click="setPage('review')"><Activity :size="18" />销售复盘<span v-if="reviewBusy" class="nav-active-dot"></span></button><button :class="{ active: page === 'reports' }" @click="setPage('reports')"><FileText :size="18" />报告</button><button :class="{ active: page === 'history' }" @click="setPage('history')"><History :size="18" />分析记录<span v-if="recent.length" class="nav-count">{{ recent.length }}</span></button><button :class="{ active: page === 'definitions' }" @click="setPage('definitions')"><BookOpen :size="18" />指标口径</button><button :class="{ active: page === 'dataset' }" @click="setPage('dataset')"><Database :size="18" />数据与权限</button></nav><div class="sidebar-session"><div class="sidebar-section-title">最近的分析<button class="icon-button" :disabled="busy" @click="newConversation()" aria-label="新建分析"><Plus :size="15" /></button></div><button v-for="item in recent.slice(0, 4)" :key="item.id" class="recent-link" :title="item.title" :disabled="busy" @click="openConversation(item.id)"><MessageSquareText :size="14" /><span>{{ item.title }}</span></button><span v-if="!recent.length" class="sidebar-empty">还没有分析记录</span></div><div class="sidebar-bottom"><div class="dataset-card"><span class="tiny-dot"></span><div><strong>Contoso 模拟数据</strong><small>2023–2025 · USD</small></div><Database :size="16" /></div><div class="profile"><div class="avatar">{{ username === 'analyst' || user.username === 'analyst' ? 'A' : 'C' }}</div><div><strong>{{ user.display_name || (user.username === 'admin' ? '演示管理员' : '区域分析师') }}</strong><span>{{ scopeLabel }}</span></div><button class="icon-button" @click="logout" :disabled="busy || reviewBusy || reportBusy" :title="busy || reviewBusy || reportBusy ? '请先停止或等待当前分析完成' : '退出登录'" aria-label="退出登录"><LogOut :size="16" /></button></div></div></aside>
+    <div class="main-shell"><header class="topbar"><div class="breadcrumb"><button class="icon-button menu-toggle" aria-label="打开菜单" @click="sidebarOpen = !sidebarOpen"><PanelLeftClose :size="21" /></button><span>工作台</span><ChevronRight :size="13" /><strong>{{ ({ overview: '销售概览', review: '销售复盘', reports: '报告', history: '分析记录', definitions: '指标口径', dataset: '数据与权限' })[page] }}</strong></div><div class="topbar-status"><span class="mode-badge" :class="{ live: isLive }"><span class="tiny-dot"></span>{{ isLive ? 'LIVE · 模型模式' : modelMode === 'unknown' ? '模式待确认' : 'MOCK · 离线模型' }}</span><span class="topbar-divider"></span><span class="currency-label">USD</span><button class="icon-button" aria-label="查看数据与权限说明" @click="setPage('dataset')"><CircleHelp :size="18" /></button></div></header>
     <main class="main-content">
+      <ReviewWorkspace v-if="reviewVisited" v-show="page === 'review'" :key="user.username" :user="user" :catalog="catalog" :scope-label="scopeLabel" @busy="reviewBusy = $event" @open-report="openReport" />
+      <ReportsWorkspace v-if="reportsVisited" v-show="page === 'reports'" ref="reportsWorkspace" :key="`reports-${user.username}`" :selected-id="reportId" :active="page === 'reports'" @busy="reportBusy = $event" @select="openReport" @new-review="setPage('review')" />
       <template v-if="page === 'overview'">
         <div class="page-heading"><div><div class="eyebrow">SALES OVERVIEW</div><h1>销售分析工作台<span class="demo-pill">模拟数据</span></h1><p>看清销售表现，让下一步分析有据可循</p></div><div class="scope-chip"><ShieldCheck :size="15" />{{ scopeLabel }}</div></div>
         <section class="filters-panel" aria-label="概览日期筛选"><div class="year-tabs" role="group" aria-label="选择年份"><button v-for="year in ['2023', '2024', '2025']" :key="year" :class="{ selected: dateStart === `${year}-01-01` && dateEnd === `${year}-12-31` }" @click="selectYear(year)">{{ year }}年</button></div><div class="date-inputs"><label><span class="sr-only">开始日期</span><input v-model="dateStart" type="date" min="2023-01-01" max="2025-12-31" aria-label="开始日期" /></label><span>至</span><label><span class="sr-only">结束日期（含当日）</span><input v-model="dateEnd" type="date" min="2023-01-01" max="2025-12-31" aria-label="结束日期" /></label><button class="button button-outline button-small" :disabled="dashboardBusy" @click="loadDashboard"><RefreshCw :size="13" :class="{ spin: dashboardBusy }" />应用</button></div></section>
@@ -291,7 +338,7 @@ onBeforeUnmount(() => { generation++; clearTimeout(pollTimer); dashboardControll
       </template>
       <template v-else-if="page === 'history'"><div class="page-heading"><div><div class="eyebrow">ANALYSIS HISTORY</div><h1>分析记录</h1><p>回到一个问题，接着把它想清楚</p></div><button class="button button-primary" :disabled="busy" @click="setPage('overview'); newConversation()"><Plus :size="16" />新建分析</button></div><section class="panel history-panel"><div class="panel-heading"><div><h2>最近会话</h2><p>本浏览器保存会话索引；消息、权限和结果以服务端记录为准</p></div><History :size="19" class="muted" /></div><div v-if="!recent.length" class="empty-state"><MessageSquareText :size="30" /><h3>还没有分析记录</h3><p>问一个销售问题后，就能在这里继续会话</p></div><button v-for="item in recent" :key="item.id" class="history-row" :disabled="busy" @click="openConversation(item.id)"><span class="history-icon"><MessageSquareText :size="18" /></span><span class="history-row-title"><strong>{{ item.title }}</strong><small>{{ new Date(item.date).toLocaleString('zh-CN') }} · {{ item.id.slice(0, 8) }}</small></span><ChevronRight :size="17" /></button></section></template>
       <template v-else-if="page === 'definitions'"><div class="page-heading"><div><div class="eyebrow">METRIC DICTIONARY</div><h1>统一口径，可信分析</h1><p>固定五个指标。计算由程序执行，模型不能改写公式。</p></div><span class="scope-chip">USD · 订单日期</span></div><div class="definitions-grid"><article v-for="(metric, index) in METRICS" :key="metric.id" class="panel definition-card"><div><span class="definition-index">0{{ index + 1 }}</span><span class="subtle-tag">{{ metric.unit }}</span></div><h2>{{ metric.label }}</h2><span class="definition-key">{{ metric.id }}</span><p>{{ metric.definition }}</p></article><article class="panel definition-card definition-boundary"><div class="section-label"><ShieldCheck :size="18" />分析边界</div><h2>知道数字，也知道边界</h2><ul><li>仅分析获授权的模拟销售订单</li><li>不提供支付、实际退款或取消率</li><li>金额变化贡献不能证明业务因果</li><li>零分母变化率与平均值显示为不适用</li><li>每次查询最多两个指标、366 天</li></ul></article></div></template>
-      <template v-else><div class="page-heading"><div><div class="eyebrow">DATA & ACCESS</div><h1>数据与权限</h1><p>透明展示数据来源、执行模式和访问范围</p></div><span class="demo-pill">模拟数据</span></div><div class="data-grid"><section class="panel data-section"><div class="panel-heading"><div><h2>Contoso 数据快照</h2><p>合成零售数据 · 非真实经营记录</p></div><Database :size="21" class="teal" /></div><dl><div><dt>数据来源</dt><dd>{{ catalog.dataset?.source || catalog.source || '以服务端发布的数据来源为准' }}</dd></div><div><dt>数据版本</dt><dd>{{ catalog.dataset?.version || catalog.dataset_version || '目录未提供' }}</dd></div><div><dt>覆盖期间</dt><dd>{{ catalog.coverage ? periodLabel(catalog.coverage) : catalog.date_coverage ? `${catalog.date_coverage.start} 至 ${catalog.date_coverage.end}` : '2023–2025（以查询校验为准）' }}</dd></div><div><dt>校验状态</dt><dd>{{ catalog.verified ? '服务端已发布校验通过的数据版本' : '未提供已验证状态' }}</dd></div><div><dt>币种</dt><dd>USD，不进行隐式换汇</dd></div><div v-if="catalog.orders || catalog.dataset?.order_count"><dt>快照订单数</dt><dd>{{ formatValue(catalog.orders || catalog.dataset?.order_count, 'order_count') }}</dd></div><div><dt>真实性说明</dt><dd>所有业务规律由生成配置形成，不能外推为真实市场结论。</dd></div></dl></section><section class="panel data-section"><div class="panel-heading"><div><h2>当前访问范围</h2><p>身份与权限由后端认证决定</p></div><ShieldCheck :size="21" class="teal" /></div><dl><div><dt>登录身份</dt><dd>{{ user.display_name || user.username }}（{{ user.username }}）</dd></div><div><dt>可见范围</dt><dd>{{ scopeLabel }}</dd></div><div><dt>可见门店</dt><dd>{{ catalog.stores?.map(store => store.label || store.name).join('、') || '由服务端应用账号映射后强制过滤' }}</dd></div><div><dt>CSV 下载</dt><dd>只导出本次获授权的聚合结果，不开放原始客户明细。</dd></div><div><dt>会话隔离</dt><dd>读取历史结果与下载时重新校验身份；知道结果 ID 不代表有权访问。</dd></div></dl></section><section class="panel data-section"><div class="panel-heading"><div><h2>执行模式与费用</h2><p>演示模式始终显式标示</p></div><Sparkles :size="21" class="teal" /></div><dl><div><dt>当前模式</dt><dd>{{ isLive ? 'LIVE：模型解析与受控工具执行' : modelMode === 'unknown' ? '尚未确认，请检查后端连接' : 'MOCK：Deep Agents 使用本地确定性模型，不调用外部模型' }}</dd></div><div><dt>查询约束</dt><dd>QuerySpec → 校验 → 固定模板 → 确定性聚合 → 图表与解释</dd></div><div><dt>模型费用</dt><dd>{{ budget ? `用量估算 ¥${Number(budget.spent_rmb || 0).toFixed(4)}；未决预留 ¥${Number(budget.reserved_rmb || 0).toFixed(4)}；合计占用 ¥${budgetExposure.toFixed(4)} / 上限 ¥${Number(budget.cap_rmb || 0).toFixed(2)}；剩余 ¥${Number(budget.remaining_rmb || 0).toFixed(4)}` : isMock ? '$0（离线模式）' : '以服务端预算记录为准' }}</dd></div><div><dt>密钥管理</dt><dd>前端不持有任何模型 API 密钥</dd></div></dl></section><section class="panel data-section data-note"><FileText :size="26" /><h2>一份可以复核的结果</h2><p>每个结果都保留期间、指标口径、数据版本和权限范围。切换图表复用原结果，CSV 使用相同的授权聚合。</p><p>正式展示前，请在后端确认数据生成与校验记录；未验证的数据不会在前端伪装成已验证统计。</p></section></div></template>
+      <template v-else-if="page === 'dataset'"><div class="page-heading"><div><div class="eyebrow">DATA & ACCESS</div><h1>数据与权限</h1><p>透明展示数据来源、执行模式和访问范围</p></div><span class="demo-pill">模拟数据</span></div><div class="data-grid"><section class="panel data-section"><div class="panel-heading"><div><h2>Contoso 数据快照</h2><p>合成零售数据 · 非真实经营记录</p></div><Database :size="21" class="teal" /></div><dl><div><dt>数据来源</dt><dd>{{ catalog.dataset?.source || catalog.source || '以服务端发布的数据来源为准' }}</dd></div><div><dt>数据版本</dt><dd>{{ catalog.dataset?.version || catalog.dataset_version || '目录未提供' }}</dd></div><div><dt>覆盖期间</dt><dd>{{ catalog.coverage ? periodLabel(catalog.coverage) : catalog.date_coverage ? `${catalog.date_coverage.start} 至 ${catalog.date_coverage.end}` : '2023–2025（以查询校验为准）' }}</dd></div><div><dt>校验状态</dt><dd>{{ catalog.verified ? '服务端已发布校验通过的数据版本' : '未提供已验证状态' }}</dd></div><div><dt>币种</dt><dd>USD，不进行隐式换汇</dd></div><div v-if="catalog.orders || catalog.dataset?.order_count"><dt>快照订单数</dt><dd>{{ formatValue(catalog.orders || catalog.dataset?.order_count, 'order_count') }}</dd></div><div><dt>真实性说明</dt><dd>所有业务规律由生成配置形成，不能外推为真实市场结论。</dd></div></dl></section><section class="panel data-section"><div class="panel-heading"><div><h2>当前访问范围</h2><p>身份与权限由后端认证决定</p></div><ShieldCheck :size="21" class="teal" /></div><dl><div><dt>登录身份</dt><dd>{{ user.display_name || user.username }}（{{ user.username }}）</dd></div><div><dt>可见范围</dt><dd>{{ scopeLabel }}</dd></div><div><dt>可见门店</dt><dd>{{ catalog.stores?.map(store => store.label || store.name).join('、') || '由服务端应用账号映射后强制过滤' }}</dd></div><div><dt>CSV 下载</dt><dd>只导出本次获授权的聚合结果，不开放原始客户明细。</dd></div><div><dt>会话隔离</dt><dd>读取历史结果与下载时重新校验身份；知道结果 ID 不代表有权访问。</dd></div></dl></section><section class="panel data-section"><div class="panel-heading"><div><h2>执行模式与费用</h2><p>演示模式始终显式标示</p></div><Sparkles :size="21" class="teal" /></div><dl><div><dt>当前模式</dt><dd>{{ isLive ? 'LIVE：模型解析与受控工具执行' : modelMode === 'unknown' ? '尚未确认，请检查后端连接' : 'MOCK：Deep Agents 使用本地确定性模型，不调用外部模型' }}</dd></div><div><dt>查询约束</dt><dd>QuerySpec → 校验 → 固定模板 → 确定性聚合 → 图表与解释</dd></div><div><dt>模型费用</dt><dd>{{ budget ? `用量估算 ¥${Number(budget.spent_rmb || 0).toFixed(4)}；未决预留 ¥${Number(budget.reserved_rmb || 0).toFixed(4)}；合计占用 ¥${budgetExposure.toFixed(4)} / 上限 ¥${Number(budget.cap_rmb || 0).toFixed(2)}；剩余 ¥${Number(budget.remaining_rmb || 0).toFixed(4)}` : isMock ? '$0（离线模式）' : '以服务端预算记录为准' }}</dd></div><div><dt>密钥管理</dt><dd>前端不持有任何模型 API 密钥</dd></div></dl></section><section class="panel data-section data-note"><FileText :size="26" /><h2>一份可以复核的结果</h2><p>每个结果都保留期间、指标口径、数据版本和权限范围。切换图表复用原结果，CSV 使用相同的授权聚合。</p><p>正式展示前，请在后端确认数据生成与校验记录；未验证的数据不会在前端伪装成已验证统计。</p></section></div></template>
       <footer class="page-footer"><span>Contoso Insight · Portfolio Edition</span><span>模拟数据，仅用于分析演示</span></footer>
     </main></div>
     <div v-if="showResetConfirm" class="modal-backdrop" @click.self="showResetConfirm = false"><section class="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="reset-title"><span class="modal-icon"><MessageSquareText :size="25" /></span><h2 id="reset-title">开始一个新分析？</h2><p>新会话会清空当前业务筛选和追问上下文。已有会话仍可在分析记录中打开，账号权限不会改变。</p><div class="modal-actions"><button class="button button-outline" @click="showResetConfirm = false">保留当前会话</button><button class="button button-primary" @click="newConversation(false)">新建会话</button></div></section></div>

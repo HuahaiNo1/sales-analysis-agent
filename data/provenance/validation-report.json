@@ -1,0 +1,179 @@
+{
+  "status": "passed",
+  "source": "SQLBI Contoso Data Generator V2",
+  "synthetic": true,
+  "currency": "USD",
+  "order_count": 97215,
+  "sales_row_count": 232928,
+  "table_rows": {
+    "dim_product": 2517,
+    "dim_store": 74,
+    "dim_customer_geo": 41996,
+    "dim_date": 1461,
+    "fact_sales": 232928
+  },
+  "coverage": {
+    "start": "2023-01-01",
+    "end": "2025-12-31",
+    "months": 36,
+    "days_with_sales": 1096
+  },
+  "years": {
+    "2023": {
+      "orders": 13569,
+      "sales_rows": 32256
+    },
+    "2024": {
+      "orders": 31468,
+      "sales_rows": 75021
+    },
+    "2025": {
+      "orders": 52178,
+      "sales_rows": 125651
+    }
+  },
+  "maximum_decimal_scale": {
+    "unit_price": 4,
+    "net_price": 6,
+    "unit_cost": 4,
+    "exchange_rate": 5
+  },
+  "anomaly_counts": {
+    "dim_product_duplicate_key": 0,
+    "dim_product_missing_key": 0,
+    "dim_store_duplicate_key": 0,
+    "dim_store_missing_key": 0,
+    "dim_customer_geo_duplicate_key": 0,
+    "dim_customer_geo_missing_key": 0,
+    "dim_date_duplicate_key": 0,
+    "duplicate_order_line": 0,
+    "missing_customer_key_foreign_key": 0,
+    "missing_store_key_foreign_key": 0,
+    "missing_product_key_foreign_key": 0,
+    "missing_order_date_foreign_key": 0,
+    "missing_delivery_date_foreign_key": 0,
+    "order_date_outside_2023_2025": 0,
+    "delivery_before_order": 0,
+    "inconsistent_order_context": 0,
+    "nonpositive_quantity": 0,
+    "invalid_decimal": 0,
+    "numeric_18_6_overflow_or_rounding": 0,
+    "nonpositive_sale_price": 0,
+    "negative_cost": 0,
+    "net_price_above_unit_price": 0,
+    "non_usd_or_nonunit_exchange_rate": 0,
+    "discount_semantics_mismatch": 0,
+    "unexpected_month_coverage": 0,
+    "unexpected_date_bounds": 0,
+    "unexpected_order_count": 0,
+    "duplicate_orders_tables_present": 0
+  },
+  "totals_exact": {
+    "sales_amount": "231599268.077812",
+    "gross_profit": "129409764.342112",
+    "units_sold": "731756",
+    "order_count": 97215
+  },
+  "samples": [
+    {
+      "order_key": "1000",
+      "line_number": "0",
+      "order_date": "2023-01-01",
+      "delivery_date": "2023-01-01",
+      "customer_key": "502594",
+      "store_key": "255",
+      "product_key": "1581",
+      "quantity": "7",
+      "unit_price": "131.4",
+      "net_price": "119.574",
+      "unit_cost": "43.536",
+      "currency_code": "USD",
+      "exchange_rate": "1.00000",
+      "line_sales_amount": "837.018",
+      "line_gross_profit": "532.266"
+    },
+    {
+      "order_key": "1001",
+      "line_number": "0",
+      "order_date": "2023-01-01",
+      "delivery_date": "2023-01-01",
+      "customer_key": "920574",
+      "store_key": "400",
+      "product_key": "1901",
+      "quantity": "1",
+      "unit_price": "209.9925",
+      "net_price": "209.9925",
+      "unit_cost": "107.0625",
+      "currency_code": "USD",
+      "exchange_rate": "1.00000",
+      "line_sales_amount": "209.9925",
+      "line_gross_profit": "102.9300"
+    },
+    {
+      "order_key": "1002",
+      "line_number": "0",
+      "order_date": "2023-01-01",
+      "delivery_date": "2023-01-01",
+      "customer_key": "1083595",
+      "store_key": "370",
+      "product_key": "1694",
+      "quantity": "2",
+      "unit_price": "6.216",
+      "net_price": "5.40792",
+      "unit_cost": "2.856",
+      "currency_code": "USD",
+      "exchange_rate": "1.00000",
+      "line_sales_amount": "10.81584",
+      "line_gross_profit": "5.10384"
+    }
+  ],
+  "raw_files": {
+    "currencyexchange.csv": {
+      "bytes": 1011586,
+      "sha256": "5e4f5637089ab68cc17c69e7f24ab05dbf64b53f023f3b738b6e2a049179c93b"
+    },
+    "customer.csv": {
+      "bytes": 9549632,
+      "sha256": "c4657effe898ef1cbb638f40e15210e9ba4cc467a9d2ed18eeb34db167dc0d52"
+    },
+    "date.csv": {
+      "bytes": 150080,
+      "sha256": "85cf27b02eefb2fbb5a99aee4bc1e069b7f7d0dd82240fd7c41d7a16f0500c07"
+    },
+    "product.csv": {
+      "bytes": 371458,
+      "sha256": "442bd9804dee0f41d6d0a5eeac197bf8c3d2ece6a16d3a7e0414e574994010da"
+    },
+    "sales.csv": {
+      "bytes": 19101888,
+      "sha256": "3d306766b3b0ab23b746990fb8221b8fd79912c27b52fe7e82607f26a0f6579d"
+    },
+    "store.csv": {
+      "bytes": 6363,
+      "sha256": "8e1efb4dcd03f89487550ae74f8d20367b42c10adfea3ff7102b56b2b37e9af9"
+    }
+  },
+  "processed_files": {
+    "dim_customer_geo.csv": {
+      "bytes": 1401369,
+      "sha256": "92ba49856035bb43cd0fa180213e2ca80fdb358ea727fecb86c63a5b142efa2b"
+    },
+    "dim_date.csv": {
+      "bytes": 57393,
+      "sha256": "a9ed39ba02c42766d5efeb16f4046ced5a7fa78bc74b9ce5b9e1a657e01e5f40"
+    },
+    "dim_product.csv": {
+      "bytes": 238730,
+      "sha256": "26a785ef91365b8b87469fa34566fe83c2923f0c53424d580078679f53a67cca"
+    },
+    "dim_store.csv": {
+      "bytes": 4167,
+      "sha256": "6b9e5acdc1623e337515e34339de99c2824fe84d0ebba84ca66f5672beb316bb"
+    },
+    "fact_sales.csv": {
+      "bytes": 19101900,
+      "sha256": "692e0347d36044e0f8aaabc124cf6296c86b5f975102b02681f102c368295d0f"
+    }
+  },
+  "data_version": "contoso-v2-2023-2025-692e0347d360"
+}

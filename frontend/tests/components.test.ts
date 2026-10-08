@@ -76,6 +76,63 @@ describe('focused UI state and rendering checks (not a real browser)', () => {
     expect(wrapper.text()).toContain('运行已取消')
     expect(wrapper.find('.query-result-anchor .result-card').exists()).toBe(false)
   })
+  it.each(
+    (['cancel', 'run'] as const).flatMap(stage =>
+      (['success', 'failure'] as const).flatMap(outcome =>
+        (['new-run', 'new-conversation', 'history', 'logout'] as const).map(boundary => ({ stage, outcome, boundary })))),
+  )('ignores late $stage $outcome after $boundary while preserving the new cancellation', async ({ stage, outcome, boundary }) => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    const delayed = deferred<Run>()
+    mocks.api.run.mockResolvedValue({ run_id: 'test-run', status: 'querying' })
+    mocks.api.cancel.mockImplementationOnce(() => stage === 'cancel' ? delayed.promise : Promise.resolve({ run_id: 'test-run', status: 'cancelled' }))
+    wrapper = mount(App, { attachTo: document.body }); await flushPromises()
+    await wrapper.find('#query-input').setValue('旧问题')
+    await wrapper.find('.composer').trigger('submit'); await flushPromises()
+    if (stage === 'run') mocks.api.run.mockReturnValueOnce(delayed.promise)
+    await button('停止').trigger('click'); await flushPromises()
+    expect(mocks.api.cancel).toHaveBeenCalledWith('test-run')
+
+    // Polling can finish the old run and unlock navigation before cancellation returns.
+    mocks.api.run.mockResolvedValue({ run_id: 'test-run', status: 'cancelled', message: '旧运行已结束' })
+    await vi.advanceTimersByTimeAsync(700); await flushPromises()
+    expect(wrapper.find('#query-input').attributes('disabled')).toBeUndefined()
+    if (boundary === 'new-conversation') {
+      mocks.api.createConversation.mockResolvedValueOnce({ id: 'new-conversation', state_version: 0 })
+      await confirmReset()
+    } else if (boundary === 'history') {
+      mocks.api.conversation.mockResolvedValueOnce({ id: 'history-conversation', state_version: 8, history: [] })
+      await wrapper.find('.recent-link').trigger('click'); await flushPromises()
+    } else if (boundary === 'logout') {
+      mocks.api.logout.mockResolvedValueOnce({})
+      await wrapper.find('[aria-label="退出登录"]').trigger('click'); await flushPromises()
+      expect(wrapper.find('.login-layout').exists()).toBe(true)
+      localStorage.removeItem('contoso:admin:conversation')
+      mocks.api.createConversation.mockResolvedValueOnce({ id: 'login-conversation', state_version: 0 })
+      await wrapper.find('.login-form-wrap form').trigger('submit'); await flushPromises()
+    }
+    mocks.api.startRun.mockResolvedValueOnce({ run_id: 'new-run', status: 'queued' })
+    mocks.api.run.mockResolvedValue({ run_id: 'new-run', status: 'querying' })
+    await wrapper.find('#query-input').setValue('新问题')
+    await wrapper.find('.composer').trigger('submit'); await flushPromises()
+    const newCancellation = deferred<Run>()
+    mocks.api.cancel.mockReturnValueOnce(newCancellation.promise)
+    await button('停止').trigger('click'); await flushPromises()
+    expect(mocks.api.cancel).toHaveBeenLastCalledWith('new-run')
+    expect(button('停止中').attributes('disabled')).toBeDefined()
+    const currentHtml = wrapper.html()
+    const runReads = mocks.api.run.mock.calls.length
+    const conversationReads = mocks.api.conversation.mock.calls.length
+
+    if (outcome === 'success') delayed.resolve({ run_id: 'test-run', status: 'succeeded', result: fixture, message: '过期的旧结果' })
+    else delayed.reject(new Error('不应显示的旧停止错误'))
+    await flushPromises()
+    expect(wrapper.html()).toBe(currentHtml)
+    expect(mocks.api.run).toHaveBeenCalledTimes(runReads)
+    expect(mocks.api.conversation).toHaveBeenCalledTimes(conversationReads)
+    expect(wrapper.find('.query-result-anchor .result-card').exists()).toBe(false)
+    expect(wrapper.find('.assistant-error').exists()).toBe(false)
+    expect(button('停止中').attributes('disabled')).toBeDefined()
+  })
   it('refreshing a failed/refused latest turn does not present an older result as current', async () => {
     localStorage.setItem('contoso:admin:conversation', 'test-conversation')
     mocks.api.conversation.mockResolvedValue({ id: 'test-conversation', state_version: 2, latest_run_id: 'refused-run', history: [{ role: 'assistant', content: '旧结果', result_id: fixture.id, run_id: 'old-run' }, { role: 'user', content: '退款', run_id: 'refused-run' }, { role: 'assistant', content: '不支持退款分析', status: 'unsupported', run_id: 'refused-run' }] })
@@ -202,6 +259,41 @@ describe('focused UI state and rendering checks (not a real browser)', () => {
     expect(wrapper!.findAll('.chat-message.user')).toHaveLength(0)
     expect(localStorage.getItem('contoso:admin:conversation')).toBe('new-conversation')
     expect(mocks.api.run).toHaveBeenCalledTimes(1)
+  })
+  it.each(
+    (['result', 'run'] as const).flatMap(stage =>
+      (['success', 'failure'] as const).map(outcome => ({ stage, outcome }))),
+  )('keeps the latest history selection when an older $stage returns $outcome', async ({ stage, outcome }) => {
+    localStorage.setItem('contoso:admin:conversation', 'test-conversation')
+    mocks.api.conversation.mockResolvedValue({ id: 'test-conversation', state_version: 2, history: [
+      { role: 'assistant', content: '第一份历史结果', run_id: 'first-run', result_id: fixture.id },
+      { role: 'assistant', content: '第二份历史结果', run_id: 'second-run', result_id: 'latest-result' },
+    ] })
+    const oldResult = deferred<AnalysisResult>()
+    const oldRun = deferred<Run>()
+    const latestResult = { ...fixture, id: 'latest-result', rows: [{ month: '最新选择', sales_amount: '200.00' }] }
+    mocks.api.result.mockImplementation((id: string) => id === 'latest-result' ? Promise.resolve(latestResult) : stage === 'result' ? oldResult.promise : Promise.resolve(fixture))
+    mocks.api.run.mockImplementation((id: string) => id === 'first-run' ? oldRun.promise : Promise.resolve({ run_id: id, status: 'succeeded' }))
+    wrapper = mount(App, { attachTo: document.body }); await flushPromises()
+    // jsdom has no scrolling implementation; the selection itself is rendered normally.
+    Object.defineProperty(wrapper.find('.query-result-anchor').element, 'scrollIntoView', { value: vi.fn() })
+    const links = wrapper.findAll('.message-result-link')
+    await links[0]!.trigger('click'); await flushPromises()
+    await links[1]!.trigger('click'); await flushPromises()
+    expect(wrapper.find('.query-result-anchor').text()).toContain('最新选择')
+    const currentHtml = wrapper.html()
+    const runReads = mocks.api.run.mock.calls.length
+    if (stage === 'result') {
+      if (outcome === 'success') oldResult.resolve(fixture)
+      else oldResult.reject(new Error('不应显示的旧结果错误'))
+    } else {
+      if (outcome === 'success') oldRun.resolve({ run_id: 'first-run', status: 'succeeded' })
+      else oldRun.reject(new Error('不应显示的旧运行错误'))
+    }
+    await flushPromises()
+    expect(wrapper.html()).toBe(currentHtml)
+    expect(mocks.api.run).toHaveBeenCalledTimes(runReads)
+    expect(wrapper.find('.assistant-error').exists()).toBe(false)
   })
   it('does not publish a late creation response after unmount', async () => {
     await mountExistingConversation()

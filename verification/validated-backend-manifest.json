@@ -1,0 +1,21 @@
+{
+  "backend/app/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "backend/app/agent.py": "842de20a0274b9e2b5fdf2a6a5f7b7abd976b79b48af2b9899bc80ba071db9ba",
+  "backend/app/budget.py": "d86b2d9a1a819a631730cd3b7bfd3ed0b53e921ba04ebd01f60c9ca14bc2bf4d",
+  "backend/app/catalog.py": "0a9bdd50b4da6873fe5f0265042f1324fe97b7fd8e44f0f73af2b03d6884c1d1",
+  "backend/app/config.py": "61b1d8f19fea3049d0483a49d3e6762266f25863a69867ea547f0ea7189dca9d",
+  "backend/app/db.py": "4b7a5e36cf016382344987751de751d8aa9a25b4b947752ff3cb6319aeef63f4",
+  "backend/app/main.py": "957dab02a6145d8ae1060c13be0551ddb7deb07774ca14aaf0a342ecba299ed9",
+  "backend/app/presentation.py": "3a79cee00661eeb9e9bcbf97273fac44701d52283f57232210766718b3b25399",
+  "backend/app/query.py": "e11c7523827f7b233f35e384974afddffe16698527e5b0787749d6a0de6c987d",
+  "backend/app/report_export.py": "5ec15dbc60bc44456ceec5949aaa87678cdd3b0b9ca3c64ce72c94b5e65ac29a",
+  "backend/app/reports.py": "027dc78563b5070b06ca5b437a675968a53c713fd993679ee8d15920122ccc1d",
+  "backend/app/review.py": "84537f0a8d865501fb3a5d85360b311de553bfcbb78b09b981ba5ed2a9fe5769",
+  "backend/app/schemas.py": "419a625e865754421c3f5270d6189b5222b2264e97a3b6b75c847fb3166ab1fd",
+  "backend/tests/test_agent.py": "dcc8a49799d034031136cd3d1b707c9ebe2732e3ca85eb6d270492f4c0d66348",
+  "backend/tests/test_backend.py": "899b066e72cd3ac79bc72dda734013ecbac6c7a093ddb69116546c8acb145684",
+  "backend/tests/test_final_semantics.py": "634f997c0a8c398a288ac3b7303a1fbcc9e6fbc47dcf2a18f4d4c0b49484860f",
+  "backend/tests/test_live_intent.py": "a0ea860223ad0604cf97fea9c18b553fa6eb5ccb1f6077fe2074aa6f13388f2c",
+  "backend/tests/test_presentation.py": "57cd1dd53230167734d42ad9439eb29a2f7b10f56a21ce0f76c953e8617a25ab",
+  "backend/tests/test_review_reports.py": "eee3699e3cabe8ff1b0984d4ef76422c1d081a178e04e00e22da51daf2919f7f"
+}

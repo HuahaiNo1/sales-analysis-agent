@@ -6,7 +6,7 @@ import { api } from '../lib/api'
 import { chartOption, isLineAllowed, isWaterfallAllowed, metricKeys, preferredChart, waterfallUnavailableReason } from '../lib/charts'
 import { formatValue, METRIC_LABELS, periodLabel } from '../lib/format'
 const ChartView = defineAsyncComponent(() => import('./ChartView.vue'))
-const props = withDefaults(defineProps<{ result: AnalysisResult; title?: string; compact?: boolean; exportable?: boolean; presentationChart?: ChartType | null }>(), { title: '分析结果', compact: false, exportable: true })
+const props = withDefaults(defineProps<{ result: AnalysisResult; title?: string; compact?: boolean; exportable?: boolean; presentationChart?: ChartType | null; snapshot?: boolean }>(), { title: '分析结果', compact: false, exportable: true, snapshot: false })
 function selectedPresentation(): ChartType {
   const chart = props.presentationChart
   if (chart === 'table' || chart === 'bar' || (chart === 'line' && isLineAllowed(props.result)) || (chart === 'waterfall' && isWaterfallAllowed(props.result))) return chart
@@ -47,6 +47,6 @@ async function download() {
     <div v-if="result.observations?.length && !compact" class="observations"><div class="section-label"><CircleCheck :size="16" />从数据中可以看到</div><p v-for="(observation, index) in result.observations" :key="index">{{ observation }}</p><small v-if="result.query?.analysis === 'contribution'">贡献表示算术变化拆解，不证明业务因果</small></div>
     <p v-for="warning in result.warnings" :key="warning" class="inline-warning"><Info :size="13" />{{ warning }}</p>
     <div class="result-foot"><span><span class="tiny-dot"></span>Contoso 模拟数据 · {{ result.metadata.scope_label || '当前授权范围' }}</span><button class="text-button" @click="showDetails = !showDetails" :aria-expanded="showDetails">口径与来源<component :is="showDetails ? ChevronUp : ChevronDown" :size="13" /></button></div>
-    <div v-if="showDetails" class="details-grid"><div><span>数据版本</span><strong>{{ result.metadata.dataset_version || '未提供' }}</strong></div><div><span>结果 ID</span><strong>{{ exportable ? result.id : '概览汇总（未保存为查询结果）' }}</strong></div><div><span>数据来源</span><strong>{{ result.metadata.source || 'Contoso 合成零售订单' }}</strong></div><div><span>期间口径</span><strong>订单日期 · 左闭右开 [{{ period?.start }}, {{ period?.end }})</strong></div><div class="detail-full"><span>安全说明</span><strong>查询和 CSV 在服务端重新校验权限；图表切换复用同一结果，不改动计算口径。</strong></div></div>
+    <div v-if="showDetails" class="details-grid"><div><span>数据版本</span><strong>{{ result.metadata.dataset_version || '未提供' }}</strong></div><div><span>结果 ID</span><strong>{{ exportable || snapshot ? result.id : '概览汇总（未保存为查询结果）' }}</strong></div><div><span>数据来源</span><strong>{{ result.metadata.source || 'Contoso 合成零售订单' }}</strong></div><div><span>期间口径</span><strong>订单日期 · 左闭右开 [{{ period?.start }}, {{ period?.end }})</strong></div><div class="detail-full"><span>安全说明</span><strong>{{ snapshot ? '冻结聚合证据不会自动重新查询；报告读取与导出会重新校验当前权限。' : '查询和 CSV 在服务端重新校验权限；图表切换复用同一结果，不改动计算口径。' }}</strong></div></div>
   </section>
 </template>

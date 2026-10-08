@@ -1,8 +1,9 @@
 from datetime import date
 from enum import StrEnum
 from typing import Literal
+from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 
 
 class StrictModel(BaseModel):
@@ -64,7 +65,8 @@ class QuerySpec(StrictModel):
     group_by: list[Dimension] = Field(default_factory=list, max_length=2)
     filters: list[DimensionFilter] = Field(default_factory=list, max_length=8)
     analysis: Literal["summary", "compare", "contribution"] = Field(
-        default="summary", description="瀑布图必须使用 contribution，且明确两个期间、非时间分组和单一可加总指标"
+        default="summary",
+        description="瀑布图必须使用 contribution，且明确两个期间、非时间分组和单一可加总指标",
     )
     sort: Sort | None = None
     limit: int = Field(default=20, ge=1, le=100)
@@ -121,6 +123,7 @@ def normalize_query_intent(raw: dict) -> dict:
 
 
 class RunRequest(StrictModel):
+    review: "ReviewRequest | None" = None
     message: str = Field(min_length=1, max_length=2000)
     client_request_id: str = Field(min_length=8, max_length=80)
     expected_state_version: int = Field(ge=0)
@@ -129,3 +132,69 @@ class RunRequest(StrictModel):
 class LoginRequest(StrictModel):
     username: str = Field(max_length=40)
     password: str = Field(max_length=100)
+
+
+class ReviewRequest(StrictModel):
+    period: Period
+    comparison: Period
+    metric: Literal["sales_amount", "units_sold", "gross_profit"] = "sales_amount"
+    filters: list[DimensionFilter] = Field(default_factory=list, max_length=7)
+    drill_down: bool = False
+
+    @model_validator(mode="after")
+    def distinct_periods(self):
+        if self.period == self.comparison:
+            raise ValueError("复盘的本期与对比期不能完全相同")
+        return self
+
+
+class ReportCreate(StrictModel):
+    run_id: UUID
+    title: str = Field(min_length=1, max_length=120)
+    comment: str = Field(default="", max_length=4000)
+    suggestions: str = Field(default="", max_length=4000)
+    client_request_id: str = Field(min_length=8, max_length=80)
+
+    @field_validator("title", "comment", "suggestions")
+    @classmethod
+    def no_control_characters(cls, value):
+        if any(ord(char) < 32 and char not in "\n\t\r" for char in value):
+            raise ValueError("报告字段含不支持的控制字符")
+        return value
+
+    @field_validator("title")
+    @classmethod
+    def nonblank_title(cls, value):
+        if not value.strip():
+            raise ValueError("报告标题不能为空")
+        return value.strip()
+
+
+class ReportUpdate(StrictModel):
+    expected_revision: int = Field(ge=1)
+    title: str | None = Field(default=None, min_length=1, max_length=120)
+    comment: str | None = Field(default=None, max_length=4000)
+    suggestions: str | None = Field(default=None, max_length=4000)
+
+    @model_validator(mode="after")
+    def has_changes(self):
+        if not self.model_fields_set - {"expected_revision"}:
+            raise ValueError("请提供至少一个可编辑字段")
+        for key in self.model_fields_set - {"expected_revision"}:
+            value = getattr(self, key)
+            if value is None:
+                raise ValueError("可编辑字段不能为 null")
+            if any(ord(char) < 32 and char not in "\n\t\r" for char in value):
+                raise ValueError("报告字段含不支持的控制字符")
+        if self.title is not None:
+            self.title = self.title.strip()
+            if not self.title:
+                raise ValueError("报告标题不能为空")
+        return self
+
+
+class ReportRevision(StrictModel):
+    expected_revision: int = Field(ge=1)
+
+
+RunRequest.model_rebuild()

@@ -1,0 +1,27 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> contoso-sales-agent-frontend@1.0.0 build
+> vue-tsc --noEmit && vite build
+
+vite v7.3.7 building client environment for production...
+transforming...
+✓ 2501 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                      0.67 kB │ gzip:   0.49 kB
+dist/assets/index-D0is9Zo5.css      44.39 kB │ gzip:  10.13 kB
+dist/assets/ChartView-8oLffsCS.js    0.82 kB │ gzip:   0.59 kB
+dist/assets/vue-DdAnxxPU.js         73.95 kB │ gzip:  29.34 kB
+dist/assets/index-BL66BJo7.js      108.14 kB │ gzip:  37.79 kB
+dist/assets/charts-CsyN7QdO.js     574.35 kB │ gzip: 195.01 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 6.11s
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice

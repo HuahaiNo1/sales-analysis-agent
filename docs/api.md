@@ -49,3 +49,11 @@ QuerySpec 拒绝未知字段、SQL、身份和门店权限等字段；表达式/
 GET /runs/{id} 新增 presentation，可空或为 `{chart_type, reused_result_id}`。前端只有在 reused_result_id 等于当前 result.id 时应用该展示类型，不修改原始 result.chart/query。运行 runtime.kind 为 presentation_reuse，model_calls 和 aggregate_queries 均为 0；认证与结果读取仍查询控制表。
 
 复用前重新检查归属、当前授权范围、原到期时间、数据/指标版本，以及目标图表兼容性。无历史返回 needs_clarification；过期或版本变化返回 expired；权限/归属变化返回 failed。图表选择歧义或不兼容返回 needs_clarification，仅在服务端保留已授权待澄清句柄，下一次选择时仍重新授权。不会重置结果 TTL，也不会新建统计快照。
+
+## 最终复盘与报告合同
+
+已有 API 保持兼容。`POST /conversations/{id}/runs` 新增可选 `review`，采用固定 `sales_review_v1` 模板；`GET /runs/{id}` 新增 `kind` 和 `review`。整体、类别、门店及可选一次商品下钻最多执行 4 个受控 QuerySpec，复用原取消与轮询生命周期。规则提示和事实数字由确定性程序计算，模型不做算术，也不能将提示解释为因果或统计异常。
+
+独立 `/reports` API 支持保存、列表、打开、注释修订、回收站/恢复及 Markdown/HTML 导出。报告包含完整冻结聚合快照，与会话结果 24 小时 TTL 无依赖；报告事实不可修改，重新运行须保存新报告。所有操作重新校验本人归属及当前门店范围是否包含整份原快照范围。
+
+完整字段、状态、限制及错误约定以 [最终前后端合同](final-api-contract.md) 为准。

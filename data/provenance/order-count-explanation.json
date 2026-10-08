@@ -1,0 +1,10 @@
+{
+  "target_orders": 100000,
+  "daily_weight_floor_total": 99441,
+  "daily_randomized_attempts": 98347,
+  "generated_orders": 97215,
+  "floor_reduction": 559,
+  "randomness_net_reduction": 1094,
+  "unavailable_active_customer_attempts": 1132,
+  "source": "Engine.cs CreateDayOrders and BuildOrder: daily weighted int truncation, seeded Random.Next, then null only when no active customer is found in the selected cluster and geography"
+}

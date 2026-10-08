@@ -1,0 +1,2459 @@
+{
+  "requests": [
+    {
+      "phase": "integration",
+      "method": "POST",
+      "path": "/api/auth/login",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 13.074
+    },
+    {
+      "phase": "integration",
+      "method": "POST",
+      "path": "/api/auth/login",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 16.815
+    },
+    {
+      "phase": "integration",
+      "method": "POST",
+      "path": "/api/conversations",
+      "status": 201,
+      "expected": 201,
+      "latency_ms": 15.444
+    },
+    {
+      "phase": "integration",
+      "method": "POST",
+      "path": "/api/conversations/9224044f-f2bf-42cb-9aa8-f78e2713e427/runs",
+      "status": 202,
+      "expected": 202,
+      "latency_ms": 69.015
+    },
+    {
+      "phase": "integration",
+      "method": "POST",
+      "path": "/api/conversations/9224044f-f2bf-42cb-9aa8-f78e2713e427/runs",
+      "status": 202,
+      "expected": 202,
+      "latency_ms": 22.421
+    },
+    {
+      "phase": "integration",
+      "method": "POST",
+      "path": "/api/conversations/9224044f-f2bf-42cb-9aa8-f78e2713e427/runs",
+      "status": 409,
+      "expected": 409,
+      "latency_ms": 17.065
+    },
+    {
+      "phase": "integration",
+      "method": "GET",
+      "path": "/api/runs/f45e60f1-d141-417b-8d74-3f38ecedf8d4",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 21.242
+    },
+    {
+      "phase": "integration",
+      "method": "GET",
+      "path": "/api/runs/f45e60f1-d141-417b-8d74-3f38ecedf8d4",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 14.484
+    },
+    {
+      "phase": "integration",
+      "method": "GET",
+      "path": "/api/runs/f45e60f1-d141-417b-8d74-3f38ecedf8d4",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 13.913
+    },
+    {
+      "phase": "integration",
+      "method": "GET",
+      "path": "/api/runs/f45e60f1-d141-417b-8d74-3f38ecedf8d4",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 31.355
+    },
+    {
+      "phase": "integration",
+      "method": "POST",
+      "path": "/api/conversations",
+      "status": 201,
+      "expected": 201,
+      "latency_ms": 12.338
+    },
+    {
+      "phase": "integration",
+      "method": "POST",
+      "path": "/api/conversations/68e5dbec-3779-4d7e-ab10-b36b97e5357e/runs",
+      "status": 202,
+      "expected": 202,
+      "latency_ms": 65.799
+    },
+    {
+      "phase": "integration",
+      "method": "GET",
+      "path": "/api/runs/cc63b25f-161d-45cf-b5ff-f2bc1779e0db",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 28.392
+    },
+    {
+      "phase": "integration",
+      "method": "GET",
+      "path": "/api/runs/cc63b25f-161d-45cf-b5ff-f2bc1779e0db",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 21.405
+    },
+    {
+      "phase": "integration",
+      "method": "POST",
+      "path": "/api/conversations",
+      "status": 201,
+      "expected": 201,
+      "latency_ms": 11.627
+    },
+    {
+      "phase": "integration",
+      "method": "POST",
+      "path": "/api/conversations/5feeda53-e4e0-4a43-83c4-d7e71b35a906/runs",
+      "status": 202,
+      "expected": 202,
+      "latency_ms": 67.877
+    },
+    {
+      "phase": "integration",
+      "method": "GET",
+      "path": "/api/runs/5efaac39-fa0b-44da-8c58-92a00d1aea82",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 39.914
+    },
+    {
+      "phase": "integration",
+      "method": "GET",
+      "path": "/api/runs/5efaac39-fa0b-44da-8c58-92a00d1aea82",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 21.99
+    },
+    {
+      "phase": "integration",
+      "method": "GET",
+      "path": "/api/catalog",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 25.302
+    },
+    {
+      "phase": "integration",
+      "method": "POST",
+      "path": "/api/conversations",
+      "status": 201,
+      "expected": 201,
+      "latency_ms": 13.155
+    },
+    {
+      "phase": "integration",
+      "method": "POST",
+      "path": "/api/conversations/600ee3ef-c019-4d96-9464-94b788343c6c/runs",
+      "status": 202,
+      "expected": 202,
+      "latency_ms": 66.44
+    },
+    {
+      "phase": "integration",
+      "method": "GET",
+      "path": "/api/runs/d1c93712-dbd1-405c-93d2-148cae33013b",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 34.078
+    },
+    {
+      "phase": "integration",
+      "method": "GET",
+      "path": "/api/runs/d1c93712-dbd1-405c-93d2-148cae33013b",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 17.397
+    },
+    {
+      "phase": "integration",
+      "method": "GET",
+      "path": "/api/runs/d1c93712-dbd1-405c-93d2-148cae33013b",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 21.682
+    },
+    {
+      "phase": "integration",
+      "method": "POST",
+      "path": "/api/reports",
+      "status": 201,
+      "expected": 201,
+      "latency_ms": 29.61
+    },
+    {
+      "phase": "integration",
+      "method": "POST",
+      "path": "/api/reports",
+      "status": 201,
+      "expected": 201,
+      "latency_ms": 23.055
+    },
+    {
+      "phase": "integration",
+      "method": "POST",
+      "path": "/api/reports",
+      "status": 409,
+      "expected": 409,
+      "latency_ms": 19.362
+    },
+    {
+      "phase": "integration",
+      "method": "GET",
+      "path": "/api/reports/c2b8c822-477b-44cf-800e-d97b5dca0aa1",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 48.976
+    },
+    {
+      "phase": "integration",
+      "method": "GET",
+      "path": "/api/reports/c2b8c822-477b-44cf-800e-d97b5dca0aa1",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 97.859
+    },
+    {
+      "phase": "integration",
+      "method": "GET",
+      "path": "/api/reports/c2b8c822-477b-44cf-800e-d97b5dca0aa1/export?format=html",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 16.276
+    },
+    {
+      "phase": "integration",
+      "method": "GET",
+      "path": "/api/reports/c2b8c822-477b-44cf-800e-d97b5dca0aa1/export?format=markdown",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 16.922
+    },
+    {
+      "phase": "integration",
+      "method": "PATCH",
+      "path": "/api/reports/c2b8c822-477b-44cf-800e-d97b5dca0aa1",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 18.837
+    },
+    {
+      "phase": "integration",
+      "method": "PATCH",
+      "path": "/api/reports/c2b8c822-477b-44cf-800e-d97b5dca0aa1",
+      "status": 409,
+      "expected": 409,
+      "latency_ms": 14.661
+    },
+    {
+      "phase": "integration",
+      "method": "PATCH",
+      "path": "/api/reports/c2b8c822-477b-44cf-800e-d97b5dca0aa1",
+      "status": 422,
+      "expected": 422,
+      "latency_ms": 11.459
+    },
+    {
+      "phase": "integration",
+      "method": "GET",
+      "path": "/api/reports?limit=100",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 14.441
+    },
+    {
+      "phase": "integration",
+      "method": "GET",
+      "path": "/api/reports/c2b8c822-477b-44cf-800e-d97b5dca0aa1",
+      "status": 404,
+      "expected": 404,
+      "latency_ms": 12.466
+    },
+    {
+      "phase": "integration",
+      "method": "GET",
+      "path": "/api/reports/c2b8c822-477b-44cf-800e-d97b5dca0aa1/export?format=markdown",
+      "status": 404,
+      "expected": 404,
+      "latency_ms": 11.805
+    },
+    {
+      "phase": "integration",
+      "method": "GET",
+      "path": "/api/reports/c2b8c822-477b-44cf-800e-d97b5dca0aa1/export?format=html",
+      "status": 404,
+      "expected": 404,
+      "latency_ms": 14.072
+    },
+    {
+      "phase": "integration",
+      "method": "PATCH",
+      "path": "/api/reports/c2b8c822-477b-44cf-800e-d97b5dca0aa1",
+      "status": 404,
+      "expected": 404,
+      "latency_ms": 12.206
+    },
+    {
+      "phase": "integration",
+      "method": "DELETE",
+      "path": "/api/reports/c2b8c822-477b-44cf-800e-d97b5dca0aa1?expected_revision=2",
+      "status": 404,
+      "expected": 404,
+      "latency_ms": 11.764
+    },
+    {
+      "phase": "integration",
+      "method": "POST",
+      "path": "/api/reports/c2b8c822-477b-44cf-800e-d97b5dca0aa1/restore",
+      "status": 404,
+      "expected": 404,
+      "latency_ms": 13.909
+    },
+    {
+      "phase": "integration",
+      "method": "GET",
+      "path": "/api/reports?limit=100",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 12.208
+    },
+    {
+      "phase": "integration",
+      "method": "GET",
+      "path": "/api/reports/c2b8c822-477b-44cf-800e-d97b5dca0aa1",
+      "status": 404,
+      "expected": 404,
+      "latency_ms": 18.916
+    },
+    {
+      "phase": "integration",
+      "method": "GET",
+      "path": "/api/reports/c2b8c822-477b-44cf-800e-d97b5dca0aa1/export?format=markdown",
+      "status": 404,
+      "expected": 404,
+      "latency_ms": 12.912
+    },
+    {
+      "phase": "integration",
+      "method": "GET",
+      "path": "/api/reports/c2b8c822-477b-44cf-800e-d97b5dca0aa1/export?format=html",
+      "status": 404,
+      "expected": 404,
+      "latency_ms": 13.866
+    },
+    {
+      "phase": "integration",
+      "method": "PATCH",
+      "path": "/api/reports/c2b8c822-477b-44cf-800e-d97b5dca0aa1",
+      "status": 404,
+      "expected": 404,
+      "latency_ms": 11.603
+    },
+    {
+      "phase": "integration",
+      "method": "DELETE",
+      "path": "/api/reports/c2b8c822-477b-44cf-800e-d97b5dca0aa1?expected_revision=2",
+      "status": 404,
+      "expected": 404,
+      "latency_ms": 12.698
+    },
+    {
+      "phase": "integration",
+      "method": "POST",
+      "path": "/api/reports/c2b8c822-477b-44cf-800e-d97b5dca0aa1/restore",
+      "status": 404,
+      "expected": 404,
+      "latency_ms": 12.58
+    },
+    {
+      "phase": "integration",
+      "method": "GET",
+      "path": "/api/results/74bb2482-23e3-49b1-8520-bc8f84c27687",
+      "status": 410,
+      "expected": 410,
+      "latency_ms": 11.411
+    },
+    {
+      "phase": "integration",
+      "method": "GET",
+      "path": "/api/reports/c2b8c822-477b-44cf-800e-d97b5dca0aa1",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 16.076
+    },
+    {
+      "phase": "integration",
+      "method": "POST",
+      "path": "/api/reports",
+      "status": 410,
+      "expected": 410,
+      "latency_ms": 15.838
+    },
+    {
+      "phase": "integration",
+      "method": "DELETE",
+      "path": "/api/reports/c2b8c822-477b-44cf-800e-d97b5dca0aa1?expected_revision=2",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 19.582
+    },
+    {
+      "phase": "integration",
+      "method": "GET",
+      "path": "/api/reports?deleted=true&limit=100",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 12.656
+    },
+    {
+      "phase": "integration",
+      "method": "GET",
+      "path": "/api/reports/c2b8c822-477b-44cf-800e-d97b5dca0aa1/export",
+      "status": 409,
+      "expected": 409,
+      "latency_ms": 12.721
+    },
+    {
+      "phase": "integration",
+      "method": "PATCH",
+      "path": "/api/reports/c2b8c822-477b-44cf-800e-d97b5dca0aa1",
+      "status": 409,
+      "expected": 409,
+      "latency_ms": 14.138
+    },
+    {
+      "phase": "integration",
+      "method": "POST",
+      "path": "/api/reports/c2b8c822-477b-44cf-800e-d97b5dca0aa1/restore",
+      "status": 409,
+      "expected": 409,
+      "latency_ms": 16.343
+    },
+    {
+      "phase": "integration",
+      "method": "POST",
+      "path": "/api/reports/c2b8c822-477b-44cf-800e-d97b5dca0aa1/restore",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 20.081
+    },
+    {
+      "phase": "integration",
+      "method": "GET",
+      "path": "/api/reports/c2b8c822-477b-44cf-800e-d97b5dca0aa1/export?format=html",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 15.673
+    },
+    {
+      "phase": "integration",
+      "method": "POST",
+      "path": "/api/auth/login",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 24.942
+    },
+    {
+      "phase": "integration",
+      "method": "POST",
+      "path": "/api/auth/login",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 15.22
+    },
+    {
+      "phase": "integration",
+      "method": "GET",
+      "path": "/api/reports/c2b8c822-477b-44cf-800e-d97b5dca0aa1",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 40.312
+    },
+    {
+      "phase": "integration",
+      "method": "GET",
+      "path": "/api/reports/c2b8c822-477b-44cf-800e-d97b5dca0aa1/export?format=html",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 30.032
+    },
+    {
+      "phase": "integration",
+      "method": "POST",
+      "path": "/api/reports",
+      "status": 201,
+      "expected": 201,
+      "latency_ms": 49.109
+    },
+    {
+      "phase": "integration",
+      "method": "POST",
+      "path": "/api/conversations",
+      "status": 201,
+      "expected": 201,
+      "latency_ms": 30.095
+    },
+    {
+      "phase": "integration",
+      "method": "POST",
+      "path": "/api/conversations/f76c7e79-6e46-4e57-92a8-d6db5a6c19dc/runs",
+      "status": 202,
+      "expected": 202,
+      "latency_ms": 91.72
+    },
+    {
+      "phase": "integration",
+      "method": "GET",
+      "path": "/api/runs/0e0e001c-f816-430f-ad93-035f92dfbcf1",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 27.629
+    },
+    {
+      "phase": "soak",
+      "method": "POST",
+      "path": "/api/conversations",
+      "status": 201,
+      "expected": 201,
+      "latency_ms": 18.853
+    },
+    {
+      "phase": "soak",
+      "method": "POST",
+      "path": "/api/conversations",
+      "status": 201,
+      "expected": 201,
+      "latency_ms": 21.725
+    },
+    {
+      "phase": "soak",
+      "method": "POST",
+      "path": "/api/conversations/7295953d-5184-4896-984b-68eed4eb3013/runs",
+      "status": 202,
+      "expected": 202,
+      "latency_ms": 129.547
+    },
+    {
+      "phase": "soak",
+      "method": "POST",
+      "path": "/api/conversations/a1aeed72-a149-4bb7-a3dd-5d14c2d64d88/runs",
+      "status": 202,
+      "expected": 202,
+      "latency_ms": 129.864
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/runs/43c7d902-6e99-45af-8d38-c4a21d864db2",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 54.669
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/runs/e65d0e5b-abd0-4f6a-9e4f-6b6b9f618e2e",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 61.061
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/runs/43c7d902-6e99-45af-8d38-c4a21d864db2",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 24.568
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/runs/e65d0e5b-abd0-4f6a-9e4f-6b6b9f618e2e",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 24.374
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/reports/c2b8c822-477b-44cf-800e-d97b5dca0aa1",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 25.736
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/reports/7d9acd20-bfee-4e71-b2f1-87ce195eaba2",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 31.955
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/reports?limit=100",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 16.315
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/reports?limit=100",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 15.389
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/reports/c2b8c822-477b-44cf-800e-d97b5dca0aa1",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 20.734
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/reports/7d9acd20-bfee-4e71-b2f1-87ce195eaba2",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 21.686
+    },
+    {
+      "phase": "soak",
+      "method": "PATCH",
+      "path": "/api/reports/c2b8c822-477b-44cf-800e-d97b5dca0aa1",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 36.154
+    },
+    {
+      "phase": "soak",
+      "method": "PATCH",
+      "path": "/api/reports/7d9acd20-bfee-4e71-b2f1-87ce195eaba2",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 37.394
+    },
+    {
+      "phase": "soak",
+      "method": "POST",
+      "path": "/api/conversations",
+      "status": 201,
+      "expected": 201,
+      "latency_ms": 23.473
+    },
+    {
+      "phase": "soak",
+      "method": "POST",
+      "path": "/api/conversations",
+      "status": 201,
+      "expected": 201,
+      "latency_ms": 22.709
+    },
+    {
+      "phase": "soak",
+      "method": "POST",
+      "path": "/api/conversations/35ec7a21-8a81-4d64-9377-9b44ee10865b/runs",
+      "status": 202,
+      "expected": 202,
+      "latency_ms": 132.895
+    },
+    {
+      "phase": "soak",
+      "method": "POST",
+      "path": "/api/conversations/7415849d-1fba-4034-8c9d-6f899c8bdd58/runs",
+      "status": 202,
+      "expected": 202,
+      "latency_ms": 129.57
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/runs/67509ca1-d499-4918-80b1-379e7a95aed1",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 29.198
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/runs/7d0be036-3c91-45ef-a6aa-ddd2c93fcacd",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 28.654
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/runs/67509ca1-d499-4918-80b1-379e7a95aed1",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 19.587
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/runs/7d0be036-3c91-45ef-a6aa-ddd2c93fcacd",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 25.408
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/runs/67509ca1-d499-4918-80b1-379e7a95aed1",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 18.277
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/runs/67509ca1-d499-4918-80b1-379e7a95aed1",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 21.552
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/reports/7d9acd20-bfee-4e71-b2f1-87ce195eaba2/export?format=html",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 19.874
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/reports/c2b8c822-477b-44cf-800e-d97b5dca0aa1/export?format=html",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 22.911
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/reports/7d9acd20-bfee-4e71-b2f1-87ce195eaba2/export?format=markdown",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 20.564
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/reports/c2b8c822-477b-44cf-800e-d97b5dca0aa1/export?format=markdown",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 24.029
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/me",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 16.964
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/me",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 20.011
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/reports/c2b8c822-477b-44cf-800e-d97b5dca0aa1",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 22.981
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/reports/7d9acd20-bfee-4e71-b2f1-87ce195eaba2",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 23.126
+    },
+    {
+      "phase": "soak",
+      "method": "POST",
+      "path": "/api/reports",
+      "status": 201,
+      "expected": 201,
+      "latency_ms": 63.968
+    },
+    {
+      "phase": "soak",
+      "method": "POST",
+      "path": "/api/reports",
+      "status": 201,
+      "expected": 201,
+      "latency_ms": 65.663
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/reports/e8ebdb5a-14f2-427e-b6db-970290d60284",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 28.239
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/reports/c21d9a7c-e7a7-436a-ada5-6b5e620cf8a6",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 29.079
+    },
+    {
+      "phase": "soak",
+      "method": "DELETE",
+      "path": "/api/reports/c21d9a7c-e7a7-436a-ada5-6b5e620cf8a6?expected_revision=1",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 19.427
+    },
+    {
+      "phase": "soak",
+      "method": "DELETE",
+      "path": "/api/reports/e8ebdb5a-14f2-427e-b6db-970290d60284?expected_revision=1",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 26.587
+    },
+    {
+      "phase": "soak",
+      "method": "POST",
+      "path": "/api/reports/c21d9a7c-e7a7-436a-ada5-6b5e620cf8a6/restore",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 18.956
+    },
+    {
+      "phase": "soak",
+      "method": "POST",
+      "path": "/api/reports/e8ebdb5a-14f2-427e-b6db-970290d60284/restore",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 24.054
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/reports/c21d9a7c-e7a7-436a-ada5-6b5e620cf8a6",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 18.809
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/reports/e8ebdb5a-14f2-427e-b6db-970290d60284",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 23.093
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/reports?deleted=true",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 17.576
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/reports?deleted=true",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 23.763
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/reports/c21d9a7c-e7a7-436a-ada5-6b5e620cf8a6/export?format=html",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 22.245
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/reports/e8ebdb5a-14f2-427e-b6db-970290d60284/export?format=html",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 25.168
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/health",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 7.24
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/health",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 6.713
+    },
+    {
+      "phase": "soak",
+      "method": "POST",
+      "path": "/api/conversations",
+      "status": 201,
+      "expected": 201,
+      "latency_ms": 18.706
+    },
+    {
+      "phase": "soak",
+      "method": "POST",
+      "path": "/api/conversations",
+      "status": 201,
+      "expected": 201,
+      "latency_ms": 20.477
+    },
+    {
+      "phase": "soak",
+      "method": "POST",
+      "path": "/api/conversations/0d778230-c763-473d-8c15-961831b3417c/runs",
+      "status": 202,
+      "expected": 202,
+      "latency_ms": 115.966
+    },
+    {
+      "phase": "soak",
+      "method": "POST",
+      "path": "/api/conversations/61008811-60e7-4c3d-accf-728105f6dddf/runs",
+      "status": 202,
+      "expected": 202,
+      "latency_ms": 116.174
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/runs/641e8fc5-4a22-4d4e-ae5e-5044191f708b",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 43.346
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/runs/9f2d5ea9-4b5f-42cf-b99d-9e84655d4527",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 46.205
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/runs/641e8fc5-4a22-4d4e-ae5e-5044191f708b",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 19.929
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/runs/9f2d5ea9-4b5f-42cf-b99d-9e84655d4527",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 20.894
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/reports/e8ebdb5a-14f2-427e-b6db-970290d60284",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 29.531
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/reports/c21d9a7c-e7a7-436a-ada5-6b5e620cf8a6",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 65.156
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/reports?limit=100",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 42.379
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/reports?limit=100",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 23.607
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/reports/e8ebdb5a-14f2-427e-b6db-970290d60284",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 30.71
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/reports/c21d9a7c-e7a7-436a-ada5-6b5e620cf8a6",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 32.186
+    },
+    {
+      "phase": "soak",
+      "method": "PATCH",
+      "path": "/api/reports/e8ebdb5a-14f2-427e-b6db-970290d60284",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 30.698
+    },
+    {
+      "phase": "soak",
+      "method": "PATCH",
+      "path": "/api/reports/c21d9a7c-e7a7-436a-ada5-6b5e620cf8a6",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 28.698
+    },
+    {
+      "phase": "soak",
+      "method": "POST",
+      "path": "/api/conversations",
+      "status": 201,
+      "expected": 201,
+      "latency_ms": 15.456
+    },
+    {
+      "phase": "soak",
+      "method": "POST",
+      "path": "/api/conversations",
+      "status": 201,
+      "expected": 201,
+      "latency_ms": 17.122
+    },
+    {
+      "phase": "soak",
+      "method": "POST",
+      "path": "/api/conversations/8af127c9-5727-4802-afe6-cd657066a74f/runs",
+      "status": 202,
+      "expected": 202,
+      "latency_ms": 126.073
+    },
+    {
+      "phase": "soak",
+      "method": "POST",
+      "path": "/api/conversations/e32b5dbb-a99e-4597-8a86-9dd2a0a41b94/runs",
+      "status": 202,
+      "expected": 202,
+      "latency_ms": 124.251
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/runs/d5b00fc4-3a87-4689-956e-794a3068808a",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 36.882
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/runs/d0e32bb7-35ac-484e-848c-a2669df9109c",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 36.344
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/runs/d5b00fc4-3a87-4689-956e-794a3068808a",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 22.628
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/runs/d0e32bb7-35ac-484e-848c-a2669df9109c",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 24.367
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/runs/d5b00fc4-3a87-4689-956e-794a3068808a",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 15.757
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/runs/d5b00fc4-3a87-4689-956e-794a3068808a",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 26.65
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/reports/c21d9a7c-e7a7-436a-ada5-6b5e620cf8a6/export?format=html",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 30.272
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/reports/e8ebdb5a-14f2-427e-b6db-970290d60284/export?format=html",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 32.312
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/reports/e8ebdb5a-14f2-427e-b6db-970290d60284/export?format=markdown",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 21.772
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/reports/c21d9a7c-e7a7-436a-ada5-6b5e620cf8a6/export?format=markdown",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 24.53
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/me",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 27.324
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/me",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 36.063
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/reports/c21d9a7c-e7a7-436a-ada5-6b5e620cf8a6",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 31.522
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/reports/e8ebdb5a-14f2-427e-b6db-970290d60284",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 26.847
+    },
+    {
+      "phase": "soak",
+      "method": "POST",
+      "path": "/api/reports",
+      "status": 201,
+      "expected": 201,
+      "latency_ms": 37.58
+    },
+    {
+      "phase": "soak",
+      "method": "POST",
+      "path": "/api/reports",
+      "status": 201,
+      "expected": 201,
+      "latency_ms": 41.963
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/reports/57bc81ff-6b40-4a8f-8ae8-22a01fcdfb83",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 22.471
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/reports/535f50fa-9b15-4f03-9d74-55600d2d42a5",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 24.956
+    },
+    {
+      "phase": "soak",
+      "method": "DELETE",
+      "path": "/api/reports/57bc81ff-6b40-4a8f-8ae8-22a01fcdfb83?expected_revision=1",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 18.987
+    },
+    {
+      "phase": "soak",
+      "method": "DELETE",
+      "path": "/api/reports/535f50fa-9b15-4f03-9d74-55600d2d42a5?expected_revision=1",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 22.09
+    },
+    {
+      "phase": "soak",
+      "method": "POST",
+      "path": "/api/reports/57bc81ff-6b40-4a8f-8ae8-22a01fcdfb83/restore",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 20.8
+    },
+    {
+      "phase": "soak",
+      "method": "POST",
+      "path": "/api/reports/535f50fa-9b15-4f03-9d74-55600d2d42a5/restore",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 22.611
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/reports/535f50fa-9b15-4f03-9d74-55600d2d42a5",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 29.354
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/reports/57bc81ff-6b40-4a8f-8ae8-22a01fcdfb83",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 35.206
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/reports?deleted=true",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 15.862
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/reports?deleted=true",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 34.236
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/reports/535f50fa-9b15-4f03-9d74-55600d2d42a5/export?format=html",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 41.26
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/reports/57bc81ff-6b40-4a8f-8ae8-22a01fcdfb83/export?format=html",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 44.401
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/health",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 7.574
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/health",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 10.429
+    },
+    {
+      "phase": "soak",
+      "method": "POST",
+      "path": "/api/conversations",
+      "status": 201,
+      "expected": 201,
+      "latency_ms": 27.062
+    },
+    {
+      "phase": "soak",
+      "method": "POST",
+      "path": "/api/conversations",
+      "status": 201,
+      "expected": 201,
+      "latency_ms": 34.513
+    },
+    {
+      "phase": "soak",
+      "method": "POST",
+      "path": "/api/conversations/4ab1a4b9-0b4d-475b-9cae-c8c66cd7aec8/runs",
+      "status": 202,
+      "expected": 202,
+      "latency_ms": 277.376
+    },
+    {
+      "phase": "soak",
+      "method": "POST",
+      "path": "/api/conversations/5705b1b7-fd4a-4abe-b12f-35e315d2a199/runs",
+      "status": 202,
+      "expected": 202,
+      "latency_ms": 272.561
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/runs/7604b7cf-c4eb-4de8-a8e2-8f50c27657aa",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 47.704
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/runs/da687ec6-183b-48f7-acd5-e23caab697b6",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 53.926
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/runs/7604b7cf-c4eb-4de8-a8e2-8f50c27657aa",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 31.492
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/runs/da687ec6-183b-48f7-acd5-e23caab697b6",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 27.198
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/reports/57bc81ff-6b40-4a8f-8ae8-22a01fcdfb83",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 23.268
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/reports/535f50fa-9b15-4f03-9d74-55600d2d42a5",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 27.325
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/reports?limit=100",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 18.628
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/reports?limit=100",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 16.532
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/reports/57bc81ff-6b40-4a8f-8ae8-22a01fcdfb83",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 23.946
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/reports/535f50fa-9b15-4f03-9d74-55600d2d42a5",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 31.742
+    },
+    {
+      "phase": "soak",
+      "method": "PATCH",
+      "path": "/api/reports/57bc81ff-6b40-4a8f-8ae8-22a01fcdfb83",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 20.934
+    },
+    {
+      "phase": "soak",
+      "method": "PATCH",
+      "path": "/api/reports/535f50fa-9b15-4f03-9d74-55600d2d42a5",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 23.64
+    },
+    {
+      "phase": "soak",
+      "method": "POST",
+      "path": "/api/conversations",
+      "status": 201,
+      "expected": 201,
+      "latency_ms": 17.48
+    },
+    {
+      "phase": "soak",
+      "method": "POST",
+      "path": "/api/conversations",
+      "status": 201,
+      "expected": 201,
+      "latency_ms": 19.864
+    },
+    {
+      "phase": "soak",
+      "method": "POST",
+      "path": "/api/conversations/d0d8bb41-e324-4eaf-8f71-e9ad979feea3/runs",
+      "status": 202,
+      "expected": 202,
+      "latency_ms": 132.201
+    },
+    {
+      "phase": "soak",
+      "method": "POST",
+      "path": "/api/conversations/c0649e4a-c35b-448f-a4ec-215947999ef4/runs",
+      "status": 202,
+      "expected": 202,
+      "latency_ms": 134.971
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/runs/30ed476a-fa2f-41d9-a515-6c3b96bcaee5",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 34.669
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/runs/8c90280b-f54c-4fbf-8a19-391e1c32f77d",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 38.077
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/runs/8c90280b-f54c-4fbf-8a19-391e1c32f77d",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 22.606
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/runs/30ed476a-fa2f-41d9-a515-6c3b96bcaee5",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 28.203
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/runs/8c90280b-f54c-4fbf-8a19-391e1c32f77d",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 15.289
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/runs/8c90280b-f54c-4fbf-8a19-391e1c32f77d",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 23.955
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/reports/535f50fa-9b15-4f03-9d74-55600d2d42a5/export?format=html",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 18.726
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/reports/57bc81ff-6b40-4a8f-8ae8-22a01fcdfb83/export?format=html",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 20.481
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/reports/535f50fa-9b15-4f03-9d74-55600d2d42a5/export?format=markdown",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 16.987
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/reports/57bc81ff-6b40-4a8f-8ae8-22a01fcdfb83/export?format=markdown",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 16.906
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/me",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 15.87
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/me",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 20.116
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/reports/57bc81ff-6b40-4a8f-8ae8-22a01fcdfb83",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 18.486
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/reports/535f50fa-9b15-4f03-9d74-55600d2d42a5",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 22.347
+    },
+    {
+      "phase": "soak",
+      "method": "POST",
+      "path": "/api/reports",
+      "status": 201,
+      "expected": 201,
+      "latency_ms": 30.906
+    },
+    {
+      "phase": "soak",
+      "method": "POST",
+      "path": "/api/reports",
+      "status": 201,
+      "expected": 201,
+      "latency_ms": 38.515
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/reports/dbe9e97b-9798-46d3-8dbe-064444beeb3d",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 31.566
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/reports/833e19b7-ec4a-4629-a6ce-1c88af9a2de3",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 31.926
+    },
+    {
+      "phase": "soak",
+      "method": "DELETE",
+      "path": "/api/reports/833e19b7-ec4a-4629-a6ce-1c88af9a2de3?expected_revision=1",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 19.278
+    },
+    {
+      "phase": "soak",
+      "method": "DELETE",
+      "path": "/api/reports/dbe9e97b-9798-46d3-8dbe-064444beeb3d?expected_revision=1",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 26.607
+    },
+    {
+      "phase": "soak",
+      "method": "POST",
+      "path": "/api/reports/833e19b7-ec4a-4629-a6ce-1c88af9a2de3/restore",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 20.718
+    },
+    {
+      "phase": "soak",
+      "method": "POST",
+      "path": "/api/reports/dbe9e97b-9798-46d3-8dbe-064444beeb3d/restore",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 21.653
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/reports/833e19b7-ec4a-4629-a6ce-1c88af9a2de3",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 20.224
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/reports/dbe9e97b-9798-46d3-8dbe-064444beeb3d",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 25.967
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/reports?deleted=true",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 19.863
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/reports?deleted=true",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 16.75
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/reports/dbe9e97b-9798-46d3-8dbe-064444beeb3d/export?format=html",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 45.695
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/reports/833e19b7-ec4a-4629-a6ce-1c88af9a2de3/export?format=html",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 45.377
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/health",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 16.851
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/health",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 17.363
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/health",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 70.365
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/reports/dbe9e97b-9798-46d3-8dbe-064444beeb3d",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 35.314
+    },
+    {
+      "phase": "soak",
+      "method": "GET",
+      "path": "/api/reports/833e19b7-ec4a-4629-a6ce-1c88af9a2de3",
+      "status": 200,
+      "expected": 200,
+      "latency_ms": 35.35
+    }
+  ],
+  "runs": [
+    {
+      "phase": "integration",
+      "kind": "review",
+      "status": "succeeded",
+      "latency_ms": 1690.45,
+      "query_specs": 4
+    },
+    {
+      "phase": "integration",
+      "kind": "review",
+      "status": "succeeded",
+      "latency_ms": 616.109,
+      "query_specs": 3
+    },
+    {
+      "phase": "integration",
+      "kind": "review",
+      "status": "no_data",
+      "latency_ms": 630.125,
+      "query_specs": 1
+    },
+    {
+      "phase": "integration",
+      "kind": "review",
+      "status": "succeeded",
+      "latency_ms": 1140.176,
+      "query_specs": 3
+    },
+    {
+      "phase": "soak",
+      "kind": "query",
+      "status": "succeeded",
+      "latency_ms": 709.616,
+      "query_specs": 1
+    },
+    {
+      "phase": "soak",
+      "kind": "query",
+      "status": "succeeded",
+      "latency_ms": 715.279,
+      "query_specs": 1
+    },
+    {
+      "phase": "soak",
+      "kind": "review",
+      "status": "succeeded",
+      "latency_ms": 684.399,
+      "query_specs": 3
+    },
+    {
+      "phase": "soak",
+      "kind": "review",
+      "status": "succeeded",
+      "latency_ms": 1722.442,
+      "query_specs": 4
+    },
+    {
+      "phase": "soak",
+      "kind": "query",
+      "status": "succeeded",
+      "latency_ms": 679.898,
+      "query_specs": 1
+    },
+    {
+      "phase": "soak",
+      "kind": "query",
+      "status": "succeeded",
+      "latency_ms": 683.405,
+      "query_specs": 1
+    },
+    {
+      "phase": "soak",
+      "kind": "review",
+      "status": "succeeded",
+      "latency_ms": 685.796,
+      "query_specs": 3
+    },
+    {
+      "phase": "soak",
+      "kind": "review",
+      "status": "succeeded",
+      "latency_ms": 1730.908,
+      "query_specs": 4
+    },
+    {
+      "phase": "soak",
+      "kind": "query",
+      "status": "succeeded",
+      "latency_ms": 852.065,
+      "query_specs": 1
+    },
+    {
+      "phase": "soak",
+      "kind": "query",
+      "status": "succeeded",
+      "latency_ms": 858.817,
+      "query_specs": 1
+    },
+    {
+      "phase": "soak",
+      "kind": "review",
+      "status": "succeeded",
+      "latency_ms": 698.303,
+      "query_specs": 3
+    },
+    {
+      "phase": "soak",
+      "kind": "review",
+      "status": "succeeded",
+      "latency_ms": 1733.187,
+      "query_specs": 4
+    }
+  ],
+  "checks": [
+    {
+      "name": "run request idempotency"
+    },
+    {
+      "name": "review evidence bound and stop: query_limit_reached"
+    },
+    {
+      "name": "review contribution rows reconcile and evidence references resolve",
+      "query_count": 4
+    },
+    {
+      "name": "real main graph and unique analysis child",
+      "model_calls": 9,
+      "query_specs": 4
+    },
+    {
+      "name": "review evidence bound and stop: drill_disabled"
+    },
+    {
+      "name": "review contribution rows reconcile and evidence references resolve",
+      "query_count": 3
+    },
+    {
+      "name": "review evidence bound and stop: no_data"
+    },
+    {
+      "name": "review contribution rows reconcile and evidence references resolve",
+      "query_count": 1
+    },
+    {
+      "name": "review evidence bound and stop: already_product_scoped"
+    },
+    {
+      "name": "review contribution rows reconcile and evidence references resolve",
+      "query_count": 3
+    },
+    {
+      "name": "MD and HTML safely escape annotations and include frozen evidence"
+    },
+    {
+      "name": "annotation revision conflict and immutable facts"
+    },
+    {
+      "name": "current second account cannot list/read/edit/trash/restore/export owner report"
+    },
+    {
+      "name": "authenticated same owner with reduced current scope denied on every report route"
+    },
+    {
+      "name": "report independent of expired source result, new save correctly rejects expiry"
+    },
+    {
+      "name": "trash, stale restore rejection and restoration preserve report facts"
+    },
+    {
+      "name": "report reads/edits/exports/auth checks/expiry/trash/restore invoke zero additional agents or aggregate queries",
+      "counters": {
+        "run_agent": 10,
+        "query_metrics": 24
+      }
+    },
+    {
+      "name": "actual API process restart preserves PostgreSQL frozen report and byte-identical export without reaggregation"
+    },
+    {
+      "name": "real in-flight scope reduction stops review after first query and publishes no evidence",
+      "terminal_status": "failed",
+      "error_code": "SCOPE_CHANGED"
+    },
+    {
+      "name": "review evidence bound and stop: drill_disabled"
+    },
+    {
+      "name": "review contribution rows reconcile and evidence references resolve",
+      "query_count": 3
+    },
+    {
+      "name": "review evidence bound and stop: query_limit_reached"
+    },
+    {
+      "name": "review contribution rows reconcile and evidence references resolve",
+      "query_count": 4
+    },
+    {
+      "name": "review evidence bound and stop: drill_disabled"
+    },
+    {
+      "name": "review contribution rows reconcile and evidence references resolve",
+      "query_count": 3
+    },
+    {
+      "name": "review evidence bound and stop: query_limit_reached"
+    },
+    {
+      "name": "review contribution rows reconcile and evidence references resolve",
+      "query_count": 4
+    },
+    {
+      "name": "review evidence bound and stop: drill_disabled"
+    },
+    {
+      "name": "review contribution rows reconcile and evidence references resolve",
+      "query_count": 3
+    },
+    {
+      "name": "review evidence bound and stop: query_limit_reached"
+    },
+    {
+      "name": "review contribution rows reconcile and evidence references resolve",
+      "query_count": 4
+    },
+    {
+      "name": "isolated mock budget has zero provider reservations after complete observation window"
+    },
+    {
+      "name": "backend source unchanged throughout observation"
+    }
+  ],
+  "soak_rounds": [
+    {
+      "round": 1,
+      "at": "2026-10-07T22:55:10.923900+00:00",
+      "actions": [
+        {
+          "user": "admin",
+          "action": "ordinary query"
+        },
+        {
+          "user": "analyst",
+          "action": "ordinary query"
+        }
+      ]
+    },
+    {
+      "round": 2,
+      "at": "2026-10-07T22:56:10.236713+00:00",
+      "actions": [
+        {
+          "user": "admin",
+          "action": "read reports"
+        },
+        {
+          "user": "analyst",
+          "action": "read reports"
+        }
+      ]
+    },
+    {
+      "round": 3,
+      "at": "2026-10-07T22:57:10.248653+00:00",
+      "actions": [
+        {
+          "user": "admin",
+          "action": "edit annotation"
+        },
+        {
+          "user": "analyst",
+          "action": "edit annotation"
+        }
+      ]
+    },
+    {
+      "round": 4,
+      "at": "2026-10-07T22:58:11.934743+00:00",
+      "actions": [
+        {
+          "user": "admin",
+          "action": "bounded review"
+        },
+        {
+          "user": "analyst",
+          "action": "bounded review"
+        }
+      ]
+    },
+    {
+      "round": 5,
+      "at": "2026-10-07T22:59:10.235236+00:00",
+      "actions": [
+        {
+          "user": "admin",
+          "action": "export reports"
+        },
+        {
+          "user": "analyst",
+          "action": "export reports"
+        }
+      ]
+    },
+    {
+      "round": 6,
+      "at": "2026-10-07T23:00:10.232288+00:00",
+      "actions": [
+        {
+          "user": "admin",
+          "action": "session and frozen report"
+        },
+        {
+          "user": "analyst",
+          "action": "session and frozen report"
+        }
+      ]
+    },
+    {
+      "round": 7,
+      "at": "2026-10-07T23:01:10.254197+00:00",
+      "actions": [
+        {
+          "user": "admin",
+          "action": "save report"
+        },
+        {
+          "user": "analyst",
+          "action": "save report"
+        }
+      ]
+    },
+    {
+      "round": 8,
+      "at": "2026-10-07T23:02:10.268236+00:00",
+      "actions": [
+        {
+          "user": "admin",
+          "action": "trash and restore"
+        },
+        {
+          "user": "analyst",
+          "action": "trash and restore"
+        }
+      ]
+    },
+    {
+      "round": 9,
+      "at": "2026-10-07T23:03:10.231193+00:00",
+      "actions": [
+        {
+          "user": "admin",
+          "action": "report and trash list"
+        },
+        {
+          "user": "analyst",
+          "action": "report and trash list"
+        }
+      ]
+    },
+    {
+      "round": 10,
+      "at": "2026-10-07T23:04:10.220043+00:00",
+      "actions": [
+        {
+          "user": "admin",
+          "action": "export and health"
+        },
+        {
+          "user": "analyst",
+          "action": "export and health"
+        }
+      ]
+    },
+    {
+      "round": 11,
+      "at": "2026-10-07T23:05:10.890798+00:00",
+      "actions": [
+        {
+          "user": "admin",
+          "action": "ordinary query"
+        },
+        {
+          "user": "analyst",
+          "action": "ordinary query"
+        }
+      ]
+    },
+    {
+      "round": 12,
+      "at": "2026-10-07T23:06:10.278908+00:00",
+      "actions": [
+        {
+          "user": "admin",
+          "action": "read reports"
+        },
+        {
+          "user": "analyst",
+          "action": "read reports"
+        }
+      ]
+    },
+    {
+      "round": 13,
+      "at": "2026-10-07T23:07:10.254292+00:00",
+      "actions": [
+        {
+          "user": "admin",
+          "action": "edit annotation"
+        },
+        {
+          "user": "analyst",
+          "action": "edit annotation"
+        }
+      ]
+    },
+    {
+      "round": 14,
+      "at": "2026-10-07T23:08:11.934576+00:00",
+      "actions": [
+        {
+          "user": "admin",
+          "action": "bounded review"
+        },
+        {
+          "user": "analyst",
+          "action": "bounded review"
+        }
+      ]
+    },
+    {
+      "round": 15,
+      "at": "2026-10-07T23:09:10.243750+00:00",
+      "actions": [
+        {
+          "user": "admin",
+          "action": "export reports"
+        },
+        {
+          "user": "analyst",
+          "action": "export reports"
+        }
+      ]
+    },
+    {
+      "round": 16,
+      "at": "2026-10-07T23:10:10.251136+00:00",
+      "actions": [
+        {
+          "user": "admin",
+          "action": "session and frozen report"
+        },
+        {
+          "user": "analyst",
+          "action": "session and frozen report"
+        }
+      ]
+    },
+    {
+      "round": 17,
+      "at": "2026-10-07T23:11:10.231382+00:00",
+      "actions": [
+        {
+          "user": "admin",
+          "action": "save report"
+        },
+        {
+          "user": "analyst",
+          "action": "save report"
+        }
+      ]
+    },
+    {
+      "round": 18,
+      "at": "2026-10-07T23:12:10.259263+00:00",
+      "actions": [
+        {
+          "user": "admin",
+          "action": "trash and restore"
+        },
+        {
+          "user": "analyst",
+          "action": "trash and restore"
+        }
+      ]
+    },
+    {
+      "round": 19,
+      "at": "2026-10-07T23:13:10.252421+00:00",
+      "actions": [
+        {
+          "user": "admin",
+          "action": "report and trash list"
+        },
+        {
+          "user": "analyst",
+          "action": "report and trash list"
+        }
+      ]
+    },
+    {
+      "round": 20,
+      "at": "2026-10-07T23:14:10.244505+00:00",
+      "actions": [
+        {
+          "user": "admin",
+          "action": "export and health"
+        },
+        {
+          "user": "analyst",
+          "action": "export and health"
+        }
+      ]
+    },
+    {
+      "round": 21,
+      "at": "2026-10-07T23:15:11.076587+00:00",
+      "actions": [
+        {
+          "user": "admin",
+          "action": "ordinary query"
+        },
+        {
+          "user": "analyst",
+          "action": "ordinary query"
+        }
+      ]
+    },
+    {
+      "round": 22,
+      "at": "2026-10-07T23:16:10.231957+00:00",
+      "actions": [
+        {
+          "user": "admin",
+          "action": "read reports"
+        },
+        {
+          "user": "analyst",
+          "action": "read reports"
+        }
+      ]
+    },
+    {
+      "round": 23,
+      "at": "2026-10-07T23:17:10.245171+00:00",
+      "actions": [
+        {
+          "user": "admin",
+          "action": "edit annotation"
+        },
+        {
+          "user": "analyst",
+          "action": "edit annotation"
+        }
+      ]
+    },
+    {
+      "round": 24,
+      "at": "2026-10-07T23:18:11.941268+00:00",
+      "actions": [
+        {
+          "user": "admin",
+          "action": "bounded review"
+        },
+        {
+          "user": "analyst",
+          "action": "bounded review"
+        }
+      ]
+    },
+    {
+      "round": 25,
+      "at": "2026-10-07T23:19:10.228171+00:00",
+      "actions": [
+        {
+          "user": "admin",
+          "action": "export reports"
+        },
+        {
+          "user": "analyst",
+          "action": "export reports"
+        }
+      ]
+    },
+    {
+      "round": 26,
+      "at": "2026-10-07T23:20:10.230527+00:00",
+      "actions": [
+        {
+          "user": "admin",
+          "action": "session and frozen report"
+        },
+        {
+          "user": "analyst",
+          "action": "session and frozen report"
+        }
+      ]
+    },
+    {
+      "round": 27,
+      "at": "2026-10-07T23:21:10.227031+00:00",
+      "actions": [
+        {
+          "user": "admin",
+          "action": "save report"
+        },
+        {
+          "user": "analyst",
+          "action": "save report"
+        }
+      ]
+    },
+    {
+      "round": 28,
+      "at": "2026-10-07T23:22:10.269855+00:00",
+      "actions": [
+        {
+          "user": "admin",
+          "action": "trash and restore"
+        },
+        {
+          "user": "analyst",
+          "action": "trash and restore"
+        }
+      ]
+    },
+    {
+      "round": 29,
+      "at": "2026-10-07T23:23:10.230957+00:00",
+      "actions": [
+        {
+          "user": "admin",
+          "action": "report and trash list"
+        },
+        {
+          "user": "analyst",
+          "action": "report and trash list"
+        }
+      ]
+    },
+    {
+      "round": 30,
+      "at": "2026-10-07T23:24:10.252348+00:00",
+      "actions": [
+        {
+          "user": "admin",
+          "action": "export and health"
+        },
+        {
+          "user": "analyst",
+          "action": "export and health"
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "status": "passed",
+  "summary": {
+    "started_at": "2026-10-07T22:54:58.737510+00:00",
+    "finished_at": "2026-10-07T23:25:10.348949+00:00",
+    "soak_started_at": "2026-10-07T22:55:10.187634+00:00",
+    "soak_seconds": 1800.159,
+    "users": 2,
+    "round_interval_seconds": 60,
+    "completed_rounds": 30,
+    "unexpected_http_outcomes": 0,
+    "request_failures": 0,
+    "isolated_provider_reservations": 0,
+    "request_latency": {
+      "n": 219,
+      "p50_ms": 23.055,
+      "p95_ms": 116.174,
+      "max_ms": 277.376
+    },
+    "soak_request_latency": {
+      "n": 153,
+      "p50_ms": 24.53,
+      "p95_ms": 129.547,
+      "max_ms": 277.376
+    },
+    "run_latency": {
+      "n": 16,
+      "p50_ms": 709.616,
+      "p95_ms": 1733.187,
+      "max_ms": 1733.187
+    },
+    "soak_run_latency": {
+      "n": 12,
+      "p50_ms": 709.616,
+      "p95_ms": 1733.187,
+      "max_ms": 1733.187
+    },
+    "run_outcomes": {
+      "integration:review:succeeded": 3,
+      "integration:review:no_data": 1,
+      "soak:query:succeeded": 6,
+      "soak:review:succeeded": 6
+    },
+    "audit_counts": {
+      "run_agent": 23,
+      "query_metrics": 52
+    }
+  }
+}

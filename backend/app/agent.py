@@ -395,6 +395,7 @@ class MockSalesModel(BaseChatModel):
     message: str = ""
     previous: dict | None = None
     catalog: dict = Field(default_factory=dict)
+    review_query: dict | None = None
 
     @property
     def _llm_type(self) -> str:
@@ -431,10 +432,16 @@ class MockSalesModel(BaseChatModel):
         else:
             query_result = _last_tool(messages, "query_metrics")
             if query_result is None:
-                query, clarification = mock_plan(self.message, self.previous, self.catalog)
+                query, clarification = (
+                    (self.review_query, "")
+                    if self.review_query
+                    else mock_plan(self.message, self.previous, self.catalog)
+                )
                 reply = call("query_metrics", {"spec": query}) if query else AIMessage(content=clarification)
             elif not query_result.get("result_id"):
                 reply = AIMessage(content="查询没有返回可分析结果，请检查查询范围")
+            elif query_result.get("next_query") is not None:
+                reply = call("query_metrics", {"spec": query_result["next_query"]})
             elif _last_tool(messages, "task") is None:
                 reply = call(
                     "task",
@@ -501,6 +508,7 @@ def _model(
     previous: dict | None,
     catalog: dict,
     api_key: str | None = None,
+    review_query: dict | None = None,
 ) -> GuardedModel:
     if live:
         # Read only the explicitly user-configured key at runtime; never log it.
@@ -510,7 +518,9 @@ def _model(
             raise AgentBoundaryError("AGENT_MODE=live requires a manually configured DEEPSEEK_API_KEY")
         inner = _deepseek_model(key)
     else:
-        inner = MockSalesModel(role=role, message=message, previous=previous, catalog=catalog)
+        inner = MockSalesModel(
+            role=role, message=message, previous=previous, catalog=catalog, review_query=review_query
+        )
     return GuardedModel(
         inner=inner,
         budget=budget,
@@ -540,6 +550,7 @@ def build_runtime(
     mode: str | None = None,
     budget: BudgetGuard | None = None,
     api_key: str | None = None,
+    review_query: dict | None = None,
 ) -> tuple[Any, dict]:
     selected_mode = mode or os.environ.get("AGENT_MODE", "mock")
     if selected_mode not in {"mock", "live"}:
@@ -596,6 +607,7 @@ def build_runtime(
         "tools_called": [],
         "model_mode": selected_mode,
         "_query_error": None,
+        "review_pending": review_query is not None,
     }
     counter = {"calls": 0, "lock": threading.Lock()}
     handles: set[str] = set()
@@ -618,8 +630,8 @@ def build_runtime(
         """
         _check_cancelled(cancelled)
         async with query_lock:
-            if state["queries"] >= 1:
-                raise AgentBoundaryError("每次运行只允许一次聚合查询")
+            if state["queries"] >= (4 if review_query else 1):
+                raise AgentBoundaryError("每次复盘最多四次受控查询；普通运行只允许一次聚合查询")
             state["queries"] += 1
             spec = normalize_query_intent(spec)
             state["tools_called"].append("query_metrics")
@@ -636,19 +648,25 @@ def build_runtime(
             handles.add(result["result_id"])
             state["result"] = result
             state["query_spec"] = copy.deepcopy(spec)
+            state["review_pending"] = review_query is not None and result.get("next_query") is not None
             # The main model sees only an opaque handle and small safe metadata.
             return {
                 "result_id": result["result_id"],
                 "status": result.get("status", "SUCCEEDED"),
                 "row_count": result.get("row_count"),
                 "currency": "USD",
+                **({"next_query": result.get("next_query")} if review_query is not None else {}),
             }
 
     @tool
     async def analyze_result(result_id: str) -> dict:
         """Read deterministic statistics from a result produced and authorized in this run."""
         _check_cancelled(cancelled)
-        if result_id not in handles:
+        if (
+            result_id not in handles
+            or state["review_pending"]
+            or (review_query is not None and result_id != state["result"]["result_id"])
+        ):
             raise AgentBoundaryError("Result handle is not authorized for this run")
         analysis = await _callback(analysis_callback, result_id)
         _check_cancelled(cancelled)
@@ -668,8 +686,15 @@ def build_runtime(
         name="analysis",
     )
     analysis_inventory = _harden_graph(analysis_graph, ANALYSIS_TOOLS)
-    main_model = _model("main", live, ledger, counter, cancelled, message, previous_query, catalog, api_key)
+    main_model = _model(
+        "main", live, ledger, counter, cancelled, message, previous_query, catalog, api_key, review_query
+    )
     prompt = MAIN_PROMPT + "\n上一条已验证业务查询（不含身份授权）:" + _json(previous_query)
+    if review_query is not None:
+        prompt += (
+            "\n本次为固定销售复盘模板，取代普通单次查询限制。先查询下列完整QuerySpec，然后只逐字使用工具返回的next_query继续；最多四次，next_query为null后才调用唯一analysis子Agent，result_id用最后一个句柄。不能提前分析、改参数或新增查询。初始QuerySpec:"
+            + _json(review_query)
+        )
     graph = create_deep_agent(
         model=main_model,
         tools=[get_metric_catalog, query_metrics],
@@ -700,6 +725,7 @@ def build_runtime(
         "model_mode": selected_mode,
         "langsmith_tracing": False,
         "max_model_calls_per_run": 12,
+        "max_query_specs": 4 if review_query else 1,
     }
     state["_counter"] = counter
     state["_budget"] = ledger
@@ -716,6 +742,7 @@ async def run_agent(
     *,
     mode: str | None = None,
     api_key: str | None = None,
+    review_query: dict | None = None,
 ) -> dict:
     graph, state = build_runtime(
         message,
@@ -726,6 +753,7 @@ async def run_agent(
         cancelled,
         mode=mode,
         api_key=api_key,
+        review_query=review_query,
     )
     _check_cancelled(cancelled)
     with tracing_context(enabled=False):
@@ -745,8 +773,9 @@ async def run_agent(
     status = "SUCCEEDED" if state["result"] else "NEEDS_CLARIFICATION"
     if answer.startswith("UNSUPPORTED_QUERY:"):
         status = "UNSUPPORTED_QUERY"
-    if state["result"] is not None and state["analysis"] is None:
+    if state["result"] is not None and (state["analysis"] is None or state["review_pending"]):
         raise AgentBoundaryError("Analysis subagent did not complete the required authorized analysis")
+    state["runtime"]["query_specs"] = state["queries"]
     state["runtime"]["model_calls"] = state.pop("_counter")["calls"]
     state["runtime"]["budget"] = state.pop("_budget").snapshot()
     return {

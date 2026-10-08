@@ -1,0 +1,9 @@
+{
+  "status": "passed",
+  "test": "Corrupted copy containing a duplicate order line, EUR currency and invalid product foreign key was rejected; no normalized CSVs published",
+  "detected_counts": {
+    "duplicate_order_line": 1,
+    "non_usd_or_nonunit_exchange_rate": 1,
+    "missing_product_key_foreign_key": 1
+  }
+}

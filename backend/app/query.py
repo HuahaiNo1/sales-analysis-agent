@@ -2,6 +2,7 @@
 
 import hashlib
 import json
+from collections.abc import Callable
 from datetime import date, datetime, timedelta, timezone
 from decimal import ROUND_HALF_UP, Decimal
 from uuid import uuid4
@@ -110,36 +111,55 @@ def compile_query(spec: QuerySpec, identity: Identity, period, *, grouped=True, 
     return statement, values
 
 
-def query_metrics(raw: dict, identity: Identity, run_id: str | None = None) -> dict:
+def query_metrics(
+    raw: dict, identity: Identity, run_id: str | None = None, cancelled: Callable[[], bool] | None = None
+) -> dict:
+    def ensure_active():
+        if cancelled and cancelled():
+            raise QueryError("CANCELLED", "运行已停止，不再执行后续 SQL")
+
+    ensure_active()
     spec = QuerySpec.model_validate(raw)
     metadata = dataset_metadata()
     validate_query(spec, identity, metadata)
     metrics = [str(x) for x in spec.metrics]
     with analytics(identity) as conn:
+        ensure_active()
         groups = conn.execute(*compile_query(spec, identity, spec.period)).fetchall()
+        ensure_active()
         totals = conn.execute(*compile_query(spec, identity, spec.period, grouped=False)).fetchone()
         compare_rows, comparison = [], None
         if spec.comparison:
+            ensure_active()
             compare_rows = conn.execute(*compile_query(spec, identity, spec.comparison)).fetchall()
+            ensure_active()
             comparison = conn.execute(
                 *compile_query(spec, identity, spec.comparison, grouped=False)
             ).fetchone()
+    ensure_active()
     if len(groups) > 20000 or len(compare_rows) > 20000:
         raise QueryError("RESULT_TOO_LARGE", "分组结果超过 20000 行，请缩小期间或分组范围")
     total_lines = totals.pop("_line_count")
     comparison_lines = comparison.pop("_line_count") if comparison else 0
+    current_counts = {tuple(row[d] for d in spec.group_by): int(row.get("_line_count", 0)) for row in groups}
+    comparison_counts = {
+        tuple(row[d] for d in spec.group_by): int(row.get("_line_count", 0)) for row in compare_rows
+    }
     for row in groups + compare_rows:
         row.pop("_line_count", None)
+    time_comparison = bool(spec.comparison and set(spec.group_by) & {"day", "week", "month"})
     current = {tuple(row[d] for d in spec.group_by): row for row in groups}
     prior = {tuple(row[d] for d in spec.group_by): row for row in compare_rows}
     merged = []
     for key in sorted(current.keys() | prior.keys()):
         row = {d: key[i] for i, d in enumerate(spec.group_by)}
         for m in metrics:
-            a = current.get(key, {}).get(m, None if m == "avg_order_value" else Decimal(0))
+            a = current.get(key, {}).get(m, None if m == "avg_order_value" or time_comparison else Decimal(0))
             row[m] = a
             if comparison is not None:
-                b = prior.get(key, {}).get(m, None if m == "avg_order_value" else Decimal(0))
+                b = prior.get(key, {}).get(
+                    m, None if m == "avg_order_value" or time_comparison else Decimal(0)
+                )
                 row[f"comparison_{m}"] = b
                 row[f"delta_{m}"] = a - b if a is not None and b is not None else None
                 row[f"change_pct_{m}"] = percent(a - b, b) if a is not None and b is not None else None
@@ -183,6 +203,66 @@ def query_metrics(raw: dict, identity: Identity, run_id: str | None = None) -> d
             other[f"delta_{m}"] = other[m] - other[f"comparison_{m}"]
             other[f"change_pct_{m}"] = percent(other[f"delta_{m}"], other[f"comparison_{m}"])
         shown.append(other)
+    row_presence = []
+    for index, row in enumerate(shown):
+        is_other = spec.analysis == "contribution" and hidden_count > 0 and index == len(shown) - 1
+        keys = (
+            [tuple(r[d] for d in spec.group_by) for r in merged[spec.limit :]]
+            if is_other
+            else [tuple(row[d] for d in spec.group_by)]
+        )
+        current_lines = sum(current_counts.get(key, 0) for key in keys)
+        prior_lines = sum(comparison_counts.get(key, 0) for key in keys) if spec.comparison else None
+        presence = (
+            "both"
+            if current_lines and prior_lines
+            else "current_only"
+            if current_lines
+            else "comparison_only"
+            if prior_lines
+            else "neither"
+        )
+        row_presence.append(
+            {
+                "current_has_records": current_lines > 0,
+                "comparison_has_records": prior_lines > 0 if prior_lines is not None else None,
+                "current_source_line_count": current_lines,
+                "comparison_source_line_count": prior_lines,
+                "state": presence if spec.comparison else "not_compared",
+                "is_other": is_other,
+                "label": {
+                    "both": "两期均有记录",
+                    "current_only": "对比期无记录/本期出现",
+                    "comparison_only": "本期无记录",
+                    "neither": "两期均无记录",
+                }[presence]
+                if spec.comparison
+                else "未比较",
+            }
+        )
+    warnings = []
+    if spec.comparison:
+        if (spec.period.end - spec.period.start) != (spec.comparison.end - spec.comparison.start):
+            warnings.append("两个期间天数不同；比较原始总量，未按日均标准化")
+        if max(spec.period.start, spec.comparison.start) < min(spec.period.end, spec.comparison.end):
+            warnings.append("两个期间存在重叠，部分记录会同时计入两期；不能视为独立期间比较")
+        if time_comparison:
+            warnings.append(
+                "时间趋势按真实自然日期展示，未进行跨期日历对齐；无记录位置及其差额保留不适用，不补零；期间比较以独立汇总为准"
+            )
+        for state, label in [("current_only", "对比期无记录/本期出现"), ("comparison_only", "本期无记录")]:
+            names = [
+                " / ".join(str(row[d]) for d in spec.group_by) or "合计"
+                for row, presence in zip(shown, row_presence)
+                if presence["state"] == state and not presence["is_other"]
+            ]
+            if names:
+                warnings.append(
+                    f"{label}：{'、'.join(names)}。仅标记展示的独立分组，不代表新品、停售或业务流失"
+                )
+        for metric in metrics:
+            if comparison[metric] is not None and comparison[metric] < 0:
+                warnings.append(f"对比期{METRIC_LABELS[metric]}为负；变化率以对比期绝对值为分母")
     observations = []
     for m in metrics:
         label = METRIC_LABELS[m]
@@ -206,7 +286,7 @@ def query_metrics(raw: dict, identity: Identity, run_id: str | None = None) -> d
             )
             observations.append(f"较对比期{sign} {money(abs(deltas[m]))}{change}")
     if spec.analysis == "contribution" and shown:
-        lead = shown[0]
+        lead = max(merged, key=lambda row: abs(row[f"delta_{metrics[0]}"]))
         observations.append(
             f"绝对变化最大的分组是 {' / '.join(str(lead[d]) for d in spec.group_by)}，变化 {money(lead[f'delta_{metrics[0]}'])}；贡献拆解不证明因果"
         )
@@ -257,6 +337,8 @@ def query_metrics(raw: dict, identity: Identity, run_id: str | None = None) -> d
         "change_pct": {k: exact(v) for k, v in percentages.items()},
         "chart": chart,
         "observations": observations[:5],
+        "row_presence": row_presence,
+        "warnings": warnings,
         "row_count": len(merged),
         "displayed_row_count": len(shown),
         "truncated": hidden_count > 0,

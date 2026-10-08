@@ -1,0 +1,23 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> contoso-sales-agent-frontend@1.0.0 test
+> vitest run --reporter=dot
+
+
+ RUN  v4.1.11 /workspace/scratch/d5a32b48e3d0/sales-final-work/sales-analysis-agent/frontend
+
+···········stdout | tests/charts-render.test.ts > waterfall ECharts option integration > renders totals and both signed contribution directions with the registered bar implementation
+[ECharts] Specified `grid.containLabel` but no `use(LegacyGridContainLabel)`;use `grid.outerBounds` instead.
+
+················································
+
+ Test Files  5 passed (5)
+      Tests  59 passed (59)
+   Start at  15:54:48
+   Duration  4.40s (transform 1.30s, setup 0ms, import 2.78s, tests 3.09s, environment 1.46s)
+
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice

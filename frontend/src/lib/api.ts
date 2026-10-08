@@ -2,7 +2,7 @@ import type { AnalysisResult, Catalog, Conversation, Dashboard, Run, User } from
 export class ApiError extends Error {
   constructor(message: string, public status: number, public code?: string) { super(message); this.name = 'ApiError' }
 }
-async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+export async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   let response: Response
   try {
     response = await fetch(`/api${path}`, { ...options, credentials: 'same-origin', headers: { ...(options.body ? { 'Content-Type': 'application/json' } : {}), ...options.headers } })

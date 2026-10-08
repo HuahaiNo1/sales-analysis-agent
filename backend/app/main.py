@@ -6,6 +6,7 @@ import hmac
 import io
 import secrets
 import threading
+import time
 from contextlib import asynccontextmanager
 from datetime import date, datetime, timedelta, timezone
 from hashlib import sha256
@@ -23,7 +24,9 @@ from .config import settings
 from .db import Identity, connect, dataset_metadata, identity_for
 from .presentation import CHART_LABELS, presentation_request
 from .query import QueryError, dashboard, query_metrics
-from .schemas import LoginRequest, QuerySpec, RunRequest
+from .reports import reports_router
+from .review import REVIEW_TIMEOUT_SECONDS, ReviewSession
+from .schemas import LoginRequest, QuerySpec, ReviewRequest, RunRequest
 
 TERMINAL = {"succeeded", "no_data", "needs_clarification", "unsupported", "failed", "cancelled", "expired"}
 TASKS: dict[str, asyncio.Task] = {}
@@ -104,6 +107,11 @@ def catalog_for(identity):
         "budget": shared_budget().snapshot(),
         "scope": user_view(identity),
         "business_date": datetime.now(timezone.utc).date().isoformat(),
+        "review_limits": {
+            "max_query_specs": 4,
+            "timeout_seconds": REVIEW_TIMEOUT_SECONDS,
+            "max_snapshot_bytes": 1024 * 1024,
+        },
         "supported_examples": [
             "2025年销售额和订单数按月看",
             "2025年商品毛利按类别看前十",
@@ -206,11 +214,20 @@ def get_conversation(conversation_id: UUID, identity: Identity = Depends(user)):
     with connect() as conn:
         conversation = owned_conversation(conn, conversation_id, identity)
         runs = conn.execute(
-            "SELECT id,status,message,answer,result_id,created_at FROM runs WHERE conversation_id=%s AND subject=%s ORDER BY created_at",
+            "SELECT r.id,r.status,r.message,r.answer,r.result_id,r.created_at,p.scope_hash AS result_scope_hash,p.subject AS result_subject FROM runs r LEFT JOIN results p ON p.id=r.result_id WHERE r.conversation_id=%s AND r.subject=%s ORDER BY r.created_at",
             [conversation_id, identity.subject],
         ).fetchall()
     history = []
+    current_query_access_changed = False
     for run in runs:
+        access_changed = bool(run["result_id"]) and (
+            not run["result_scope_hash"]
+            or run["result_subject"] != identity.subject
+            or not hmac.compare_digest(run["result_scope_hash"], identity.scope_hash)
+        )
+        if run["result_id"] and run["status"] in {"succeeded", "no_data"}:
+            # current_query survives later clarification/failure/cancellation runs.
+            current_query_access_changed = access_changed
         history.append(
             {
                 "role": "user",
@@ -223,10 +240,12 @@ def get_conversation(conversation_id: UUID, identity: Identity = Depends(user)):
             history.append(
                 {
                     "role": "assistant",
-                    "content": run["answer"],
+                    "content": "原分析已不可访问，请在当前授权范围重新查询"
+                    if access_changed
+                    else run["answer"],
                     "run_id": str(run["id"]),
-                    "result_id": str(run["result_id"]) if run["result_id"] else None,
-                    "status": run["status"],
+                    "result_id": str(run["result_id"]) if run["result_id"] and not access_changed else None,
+                    "status": "failed" if access_changed else run["status"],
                     "created_at": run["created_at"].isoformat(),
                 }
             )
@@ -235,7 +254,7 @@ def get_conversation(conversation_id: UUID, identity: Identity = Depends(user)):
         "conversation_id": str(conversation["id"]),
         "state_version": conversation["state_version"],
         "latest_run_id": str(conversation["latest_run_id"]) if conversation["latest_run_id"] else None,
-        "current_query": conversation["current_query"],
+        "current_query": None if current_query_access_changed else conversation["current_query"],
         "history": history,
     }
 
@@ -255,31 +274,110 @@ def update_run(run_id, **fields):
     if not set(fields) <= allowed:
         raise RuntimeError("Invalid internal run update")
     with connect() as conn:
+        if fields.get("status") in TERMINAL:
+            # The DB flag is authoritative, including the gap before cancel_run sets its Event.
+            row = conn.execute(
+                "SELECT status,cancel_requested FROM runs WHERE id=%s FOR UPDATE", [run_id]
+            ).fetchone()
+            if not row or row["status"] in TERMINAL:
+                return
+            if row["cancel_requested"]:
+                fields = {
+                    "status": "cancelled",
+                    "progress_stage": "cancelled",
+                    "answer": "运行已取消，未发布新的结果",
+                    "error_code": None,
+                }
         clause = ",".join(f"{key}=%s" for key in fields)
-        conn.execute(f"UPDATE runs SET {clause},updated_at=now() WHERE id=%s", [*fields.values(), run_id])
+        # Late progress cannot revive accepted cancellation or a terminal run.
+        guard = (
+            " AND cancel_requested=false AND status NOT IN ('succeeded','no_data','needs_clarification','unsupported','failed','cancelled','expired')"
+            if fields.get("status") not in TERMINAL
+            else ""
+        )
+        conn.execute(
+            f"UPDATE runs SET {clause},updated_at=now() WHERE id=%s{guard}", [*fields.values(), run_id]
+        )
 
 
-async def process_run(run_id: str, identity: Identity, message: str, previous: dict | None):
+async def process_run(
+    run_id: str,
+    identity: Identity,
+    message: str,
+    previous: dict | None,
+    review_request: ReviewRequest | None = None,
+):
     event = CANCELLATIONS[run_id]
     generated = {}
+    review_deadline = time.monotonic() + REVIEW_TIMEOUT_SECONDS if review_request else None
+
+    def deadline_expired():
+        return review_deadline is not None and time.monotonic() >= review_deadline
+
+    def ensure_review_scope():
+        if review_request is None:
+            return
+        current = identity_for(identity.subject)
+        if current.subject != identity.subject or not set(identity.allowed_store_ids) <= set(
+            current.allowed_store_ids
+        ):
+            raise QueryError(
+                "SCOPE_CHANGED", "复盘期间授权范围已缩小，已停止后续动作；请按当前范围重新运行"
+            )
+
+    def stop_requested():
+        if event.is_set() or deadline_expired():
+            return True
+        # This boundary also runs before each model/tool call and between SQL statements.
+        ensure_review_scope()
+        return False
+
+    def ensure_active():
+        if deadline_expired():
+            raise QueryError(
+                "REVIEW_TIMEOUT",
+                f"复盘超过 {REVIEW_TIMEOUT_SECONDS} 秒总流程时限，已停止后续动作，未发布部分结果",
+            )
+        if event.is_set():
+            raise QueryError("CANCELLED", "运行已取消")
+        ensure_review_scope()
+
     try:
+        ensure_active()
         update_run(run_id, status="querying", progress_stage="querying")
+        business_catalog = catalog_for(identity)
+        review_session = (
+            ReviewSession(review_request, business_catalog["categories"]) if review_request else None
+        )
 
         def query_callback(spec):
-            if event.is_set():
-                raise QueryError("CANCELLED", "运行已取消")
-            result = query_metrics(spec, identity, run_id)
+            ensure_active()
+            if review_session:
+                review_session.validate_next(spec)
+                update_run(run_id, status="querying", progress_stage="review_" + review_session.role)
+            result = (
+                query_metrics(spec, identity, run_id, stop_requested)
+                if review_session
+                else query_metrics(spec, identity, run_id)
+            )
+            ensure_active()
+            if review_session:
+                review_session.accept(result)
             generated[result["id"]] = result
             update_run(run_id, status="analyzing", progress_stage="analyzing")
             return {
                 "result_id": result["id"],
                 "row_count": result["row_count"],
                 "status": "NO_DATA" if result["no_data"] else "SUCCEEDED",
+                **({"next_query": review_session.next_spec} if review_session else {}),
             }
 
         def analysis_callback(result_id):
+            ensure_active()
             if result_id not in generated:
                 raise QueryError("FORBIDDEN_RESULT", "无权访问结果")
+            if review_session:
+                return review_session.result()
             payload = generated[result_id]
             return {
                 k: payload[k]
@@ -295,36 +393,50 @@ async def process_run(run_id: str, identity: Identity, message: str, previous: d
                 ]
             }
 
-        outcome = await run_agent(
-            message,
-            previous,
-            catalog_for(identity),
-            query_callback,
-            analysis_callback,
-            event.is_set,
-            mode=settings.agent_mode,
-            api_key=settings.deepseek_api_key.get_secret_value() if settings.agent_mode == "live" else None,
-        )
+        remaining = max(0, review_deadline - time.monotonic()) if review_deadline else None
+        async with asyncio.timeout(remaining):
+            outcome = await run_agent(
+                message,
+                previous,
+                business_catalog,
+                query_callback,
+                analysis_callback,
+                stop_requested,
+                mode=settings.agent_mode,
+                api_key=settings.deepseek_api_key.get_secret_value()
+                if settings.agent_mode == "live"
+                else None,
+                **({"review_query": review_session.next_spec} if review_session else {}),
+            )
+        ensure_active()
         if event.is_set():
             update_run(
                 run_id, status="cancelled", progress_stage="cancelled", answer="运行已取消，未发布新的结果"
             )
             return
         if outcome["status"] == "SUCCEEDED":
-            payload = generated[outcome["result"]["result_id"]]
+            review_payload = review_session.result() if review_session else None
+            payload = (
+                review_payload["evidence"][0]["result"]
+                if review_payload
+                else generated[outcome["result"]["result_id"]]
+            )
             status = "no_data" if payload["no_data"] else "succeeded"
             # Trusted deterministic observations are the numeric answer. Model prose cannot replace them.
             answer = ("没有匹配的数据。" if payload["no_data"] else "") + "；".join(payload["observations"])
             with connect() as conn:
                 locked = conn.execute(
-                    "SELECT cancel_requested FROM runs WHERE id=%s FOR UPDATE", [run_id]
+                    "SELECT status,cancel_requested FROM runs WHERE id=%s FOR UPDATE", [run_id]
                 ).fetchone()
+                if not locked or locked["status"] in TERMINAL:
+                    return
                 if locked["cancel_requested"]:
                     conn.execute(
                         "UPDATE runs SET status='cancelled',progress_stage='cancelled',answer='运行已取消，未发布新的结果',updated_at=now() WHERE id=%s",
                         [run_id],
                     )
                     return
+                ensure_active()
                 conn.execute(
                     "INSERT INTO results(id,run_id,subject,scope_hash,payload,expires_at) VALUES(%s,%s,%s,%s,%s,%s)",
                     [
@@ -337,8 +449,16 @@ async def process_run(run_id: str, identity: Identity, message: str, previous: d
                     ],
                 )
                 conn.execute(
-                    "UPDATE runs SET status=%s,progress_stage=%s,answer=%s,result_id=%s,agent_runtime=%s,updated_at=now() WHERE id=%s",
-                    [status, status, answer, payload["id"], Jsonb(outcome["runtime"]), run_id],
+                    "UPDATE runs SET status=%s,progress_stage=%s,answer=%s,result_id=%s,agent_runtime=%s,review_payload=%s,updated_at=now() WHERE id=%s",
+                    [
+                        status,
+                        status,
+                        answer,
+                        payload["id"],
+                        Jsonb(outcome["runtime"]),
+                        Jsonb(review_payload) if review_payload else None,
+                        run_id,
+                    ],
                 )
                 conn.execute(
                     "UPDATE conversations SET current_query=%s WHERE latest_run_id=%s",
@@ -353,11 +473,32 @@ async def process_run(run_id: str, identity: Identity, message: str, previous: d
                 answer=outcome["answer"],
                 agent_runtime=Jsonb(outcome["runtime"]),
             )
+    except TimeoutError:
+        event.set()
+        update_run(
+            run_id,
+            status="failed",
+            progress_stage="failed",
+            error_code="REVIEW_TIMEOUT" if deadline_expired() else "RUN_TIMEOUT",
+            answer=f"复盘超过 {REVIEW_TIMEOUT_SECONDS} 秒总流程时限，已停止后续动作，未发布部分结果"
+            if deadline_expired()
+            else "本次调用超时，已停止后续动作，未发布新结果",
+        )
     except asyncio.CancelledError:
+        event.set()
         update_run(run_id, status="cancelled", progress_stage="cancelled", answer="运行已取消")
         raise
     except Exception as exc:
-        if event.is_set():
+        if deadline_expired():
+            event.set()
+            update_run(
+                run_id,
+                status="failed",
+                progress_stage="failed",
+                error_code="REVIEW_TIMEOUT",
+                answer=f"复盘超过 {REVIEW_TIMEOUT_SECONDS} 秒总流程时限，已停止后续动作，未发布部分结果",
+            )
+        elif event.is_set():
             update_run(
                 run_id, status="cancelled", progress_stage="cancelled", answer="运行已取消，未发布新的结果"
             )
@@ -450,11 +591,12 @@ async def create_run(conversation_id: UUID, body: RunRequest, identity: Identity
     with connect() as conn:
         conversation = owned_conversation(conn, conversation_id, identity, lock=True)
         previous = conn.execute(
-            "SELECT id,message,status FROM runs WHERE conversation_id=%s AND client_request_id=%s",
+            "SELECT id,message,status,request_payload FROM runs WHERE conversation_id=%s AND client_request_id=%s",
             [conversation_id, body.client_request_id],
         ).fetchone()
         if previous:
-            if previous["message"] != body.message:
+            review_input = body.review.model_dump(mode="json") if body.review else None
+            if previous["message"] != body.message or previous["request_payload"] != review_input:
                 raise HTTPException(409, "同一请求 ID 不能用于不同问题")
             return {
                 "run_id": str(previous["id"]),
@@ -474,14 +616,22 @@ async def create_run(conversation_id: UUID, body: RunRequest, identity: Identity
                 raise HTTPException(409, "当前会话仍有运行中的问题，请等待或取消")
         run_id = str(uuid4())
         conn.execute(
-            "INSERT INTO runs(id,conversation_id,subject,client_request_id,status,progress_stage,message) VALUES(%s,%s,%s,%s,'queued','queued',%s)",
-            [run_id, conversation_id, identity.subject, body.client_request_id, body.message],
+            "INSERT INTO runs(id,conversation_id,subject,client_request_id,status,progress_stage,message,kind,request_payload) VALUES(%s,%s,%s,%s,'queued','queued',%s,%s,%s)",
+            [
+                run_id,
+                conversation_id,
+                identity.subject,
+                body.client_request_id,
+                body.message,
+                "review" if body.review else "query",
+                Jsonb(body.review.model_dump(mode="json")) if body.review else None,
+            ],
         )
         conn.execute(
             "UPDATE conversations SET latest_run_id=%s,state_version=state_version+1 WHERE id=%s",
             [run_id, conversation_id],
         )
-        chart_type = presentation_request(body.message)
+        chart_type = None if body.review else presentation_request(body.message)
         if chart_type is not None:
             outcome = presentation_outcome(chart_type, active, identity)
             conn.execute(
@@ -503,7 +653,7 @@ async def create_run(conversation_id: UUID, body: RunRequest, identity: Identity
             }
     CANCELLATIONS[run_id] = threading.Event()
     TASKS[run_id] = asyncio.create_task(
-        process_run(run_id, identity, body.message, conversation["current_query"])
+        process_run(run_id, identity, body.message, conversation["current_query"], body.review)
     )
     return {"run_id": run_id, "status": "queued", "state_version": conversation["state_version"] + 1}
 
@@ -516,10 +666,10 @@ def result_for(result_id, identity):
         ).fetchone()
     if not row:
         raise HTTPException(404, "结果不存在")
-    if row["expires_at"] <= datetime.now(timezone.utc):
-        raise HTTPException(410, "结果已过期，请重新查询")
     if not hmac.compare_digest(row["scope_hash"], identity.scope_hash):
         raise HTTPException(403, "授权范围已变化，请重新查询")
+    if row["expires_at"] <= datetime.now(timezone.utc):
+        raise HTTPException(410, "结果已过期，请重新查询")
     return row["payload"]
 
 
@@ -552,6 +702,8 @@ def get_run(run_id: UUID, identity: Identity = Depends(user)):
         "error_code": row["error_code"],
         "result_id": str(row["result_id"]) if row["result_id"] else None,
         "result": payload,
+        "kind": row["kind"],
+        "review": row["review_payload"] if payload is not None else None,
         "runtime": row["agent_runtime"],
         "presentation": (row["agent_runtime"] or {}).get("presentation"),
         "budget": shared_budget().snapshot(),
@@ -611,3 +763,6 @@ def export_csv(result_id: UUID, identity: Identity = Depends(user)):
             "X-Source-Result-SHA256": payload["sha256"],
         },
     )
+
+
+app.include_router(reports_router(user, result_for))

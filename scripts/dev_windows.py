@@ -14,6 +14,7 @@ import shutil
 import socket
 import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 from urllib.error import URLError
@@ -141,9 +142,13 @@ def main() -> int:
     env.update(LANGSMITH_TRACING="false", LANGCHAIN_TRACING_V2="false")
     if args.test_backend or args.test_e2e:
         env["AGENT_MODE"] = "mock"
+        env["SALES_DISABLE_ENV_FILE"] = "1"
     children = []
     RUNTIME.mkdir(exist_ok=True)
     with contextlib.ExitStack() as stack:
+        if args.test_backend or args.test_e2e:
+            test_budget_dir = stack.enter_context(tempfile.TemporaryDirectory(prefix="sales-test-budget-"))
+            env["LLM_BUDGET_PATH"] = str(Path(test_budget_dir) / "llm-budget.sqlite3")
         if not args.test_backend:
             node = shutil.which("node")
             vite = ROOT / "frontend/node_modules/vite/bin/vite.js"

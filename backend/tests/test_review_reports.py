@@ -314,7 +314,8 @@ def test_review_tool_failure_is_failed_not_clarification(monkeypatch):
         login(client)
         _, _, rid = start_review(client)
         outcome = wait_run(client, rid)
-        assert outcome["status"] == "failed" and outcome["error_code"] == "FIXTURE_FAILURE", outcome
+        assert outcome["status"] == "failed" and outcome["error_code"] == "RUN_FAILED", outcome
+        assert "测试受控错误" not in outcome["answer"]
         assert outcome["result"] is None and outcome["review"] is None
 
 

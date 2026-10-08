@@ -1,0 +1,19 @@
+{
+  "backend_aggregate": "143 passed in 15.00s",
+  "focused_http": "3 cases passed",
+  "live_reservations": 0,
+  "environment": "isolated existing validation database on 127.0.0.1:55433; official PostgreSQL 17.11 local unpack",
+  "source_unchanged_after_validation": true,
+  "frozen_zip_sha256": "bd8b7153fc7b9e0fe52d4bec32beac6698513f8a7a1bf7ce0669a53eee4c84ff",
+  "dataset_rows": 232928,
+  "dataset_orders": 97215,
+  "limitations": "No paid provider call, browser/visual acceptance, user runtime restoration, real budget inspection or reconciliation, push or deploy. Prior 30-minute observation not repeated.",
+  "recovered_harness_issues": [
+    "Initial detached PostgreSQL was killed on execution teardown; terminal aggregate rerun in one lifecycle.",
+    "Initial scripted-model _generate override lacked optional positional parameters; corrected test harness only and reran HTTP."
+  ],
+  "artifact_sha256": {
+    "backend-tests.log": "11587fbf5d538218beb9f7d92cb0f724307d1fe7d454cd54d287f0f10c4994b0",
+    "focused-result.json": "481ceb8a95990f88f24c2193c804e0147bf6d1c809f2db8972f3f3c57f100e4c"
+  }
+}

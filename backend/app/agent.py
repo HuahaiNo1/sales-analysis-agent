@@ -46,10 +46,31 @@ FORBIDDEN_DEFAULT_TOOLS = frozenset(
     {"ls", "read_file", "write_file", "edit_file", "delete", "glob", "grep", "execute", "write_todos"}
 )
 _PROFILE_LOCK = threading.Lock()
+FAILURE_REASONS = frozenset(
+    {
+        "other_error",
+        "model_request_invalid",
+        "model_input_invalid",
+        "model_call_limit_exceeded",
+        "tool_not_allowed",
+        "subagent_not_allowed",
+        "query_limit_exceeded",
+        "query_handle_invalid",
+        "result_handle_unauthorized",
+        "review_incomplete",
+        "analysis_already_started",
+        "analysis_missing",
+        "tool_execution_failed",
+    }
+)
 
 
 class AgentBoundaryError(RuntimeError):
     code = "AGENT_BOUNDARY_ERROR"
+
+    def __init__(self, message: str, *, reason: str = "other_error"):
+        super().__init__(message)
+        self.boundary_reason = reason
 
 
 class AgentCancelled(RuntimeError):
@@ -105,13 +126,13 @@ class GuardedModel(BaseChatModel):
             # Provider request overrides must never change token bounds/model/tool set.
             unexpected = set(kwargs) - {"stop"}
             if unexpected:
-                raise AgentBoundaryError("Unsupported model request override")
+                raise AgentBoundaryError("Unsupported model request override", reason="model_request_invalid")
         if any(not isinstance(m.content, str) for m in messages):
-            raise AgentBoundaryError("Only text model inputs are supported")
+            raise AgentBoundaryError("Only text model inputs are supported", reason="model_input_invalid")
         with self.run_counter["lock"]:
             self.run_counter["calls"] += 1
             if self.run_counter["calls"] > 12:
-                raise AgentBoundaryError("本次运行模型调用次数已达上限")
+                raise AgentBoundaryError("本次运行模型调用次数已达上限", reason="model_call_limit_exceeded")
         if not self.live:
             return None
         payload = {
@@ -128,7 +149,7 @@ class GuardedModel(BaseChatModel):
             self.budget.finish(reservation, message.usage_metadata)
         _check_cancelled(self.cancelled)
         if any(call["name"] not in self.allowed_tools for call in message.tool_calls):
-            raise AgentBoundaryError("Model attempted an unapproved tool")
+            raise AgentBoundaryError("Model attempted an unapproved tool", reason="tool_not_allowed")
         return ChatResult(generations=[ChatGeneration(message=message)])
 
     def _generate(
@@ -169,24 +190,34 @@ class GuardedModel(BaseChatModel):
 class ToolBoundary(AgentMiddleware):
     """Defense in depth: validate dispatch independently of model visibility."""
 
-    def __init__(self, allowed: frozenset[str], cancelled: Callable[[], bool]):
+    def __init__(
+        self,
+        allowed: frozenset[str],
+        cancelled: Callable[[], bool],
+        prepare_task: Callable[[Any], Any] | None = None,
+    ):
         self.allowed = allowed
         self.cancelled = cancelled
+        self.prepare_task = prepare_task
 
     def _check(self, request: Any) -> None:
         _check_cancelled(self.cancelled)
         call = request.tool_call
         if call["name"] not in self.allowed:
-            raise AgentBoundaryError("Unapproved tool dispatch")
+            raise AgentBoundaryError("Unapproved tool dispatch", reason="tool_not_allowed")
         if call["name"] == "task" and call["args"].get("subagent_type") != "analysis":
-            raise AgentBoundaryError("Only the analysis subagent is permitted")
+            raise AgentBoundaryError("Only the analysis subagent is permitted", reason="subagent_not_allowed")
 
     def wrap_tool_call(self, request: Any, handler: Any) -> Any:
         self._check(request)
+        if request.tool_call["name"] == "task" and self.prepare_task:
+            request = self.prepare_task(request)
         return handler(request)
 
     async def awrap_tool_call(self, request: Any, handler: Any) -> Any:
         self._check(request)
+        if request.tool_call["name"] == "task" and self.prepare_task:
+            request = self.prepare_task(request)
         return await handler(request)
 
 
@@ -608,6 +639,7 @@ def build_runtime(
         "model_mode": selected_mode,
         "_query_error": None,
         "review_pending": review_query is not None,
+        "analysis_started": False,
     }
     counter = {"calls": 0, "lock": threading.Lock()}
     handles: set[str] = set()
@@ -631,7 +663,9 @@ def build_runtime(
         _check_cancelled(cancelled)
         async with query_lock:
             if state["queries"] >= (4 if review_query else 1):
-                raise AgentBoundaryError("每次复盘最多四次受控查询；普通运行只允许一次聚合查询")
+                raise AgentBoundaryError(
+                    "每次复盘最多四次受控查询；普通运行只允许一次聚合查询", reason="query_limit_exceeded"
+                )
             state["queries"] += 1
             spec = normalize_query_intent(spec)
             state["tools_called"].append("query_metrics")
@@ -644,7 +678,9 @@ def build_runtime(
                 raise
             _check_cancelled(cancelled)
             if not isinstance(result, dict) or not isinstance(result.get("result_id"), str):
-                raise AgentBoundaryError("Query gateway did not return an immutable result handle")
+                raise AgentBoundaryError(
+                    "Query gateway did not return an immutable result handle", reason="query_handle_invalid"
+                )
             handles.add(result["result_id"])
             state["result"] = result
             state["query_spec"] = copy.deepcopy(spec)
@@ -658,6 +694,23 @@ def build_runtime(
                 **({"next_query": result.get("next_query")} if review_query is not None else {}),
             }
 
+    def prepare_analysis_task(request: Any) -> Any:
+        # task.description is model-authored prose, never an authority source.
+        # Bind the child to the server's final immutable handle. Earlier review
+        # handles remain evidence but cannot authorize partial review analysis.
+        _check_cancelled(cancelled)
+        if state["result"] is None or state["review_pending"]:
+            raise AgentBoundaryError("Review queries are not complete", reason="review_incomplete")
+        if state["analysis_started"]:
+            raise AgentBoundaryError("Only one analysis task is permitted", reason="analysis_already_started")
+        if state["_query_error"] is not None:
+            raise state["_query_error"]
+        state["analysis_started"] = True
+        state["tools_called"].append("task")
+        call = copy.deepcopy(request.tool_call)
+        call["args"]["description"] = _json({"result_id": state["result"]["result_id"], "question": message})
+        return request.override(tool_call=call)
+
     @tool
     async def analyze_result(result_id: str) -> dict:
         """Read deterministic statistics from a result produced and authorized in this run."""
@@ -667,7 +720,9 @@ def build_runtime(
             or state["review_pending"]
             or (review_query is not None and result_id != state["result"]["result_id"])
         ):
-            raise AgentBoundaryError("Result handle is not authorized for this run")
+            raise AgentBoundaryError(
+                "Result handle is not authorized for this run", reason="result_handle_unauthorized"
+            )
         analysis = await _callback(analysis_callback, result_id)
         _check_cancelled(cancelled)
         state["analysis"] = analysis
@@ -691,6 +746,14 @@ def build_runtime(
     )
     prompt = MAIN_PROMPT + "\n上一条已验证业务查询（不含身份授权）:" + _json(previous_query)
     if review_query is not None:
+        prompt = prompt.replace(
+            "再提出一次 query_metrics 的 QuerySpec 查询",
+            "按固定复盘模板依次提交 query_metrics 的 QuerySpec 查询",
+        ).replace(
+            "完成 query_metrics 后，把返回 result_id 和问题以 JSON 字符串交给 task，subagent_type 必须为 analysis。",
+            "所有复盘查询完成且 next_query 为 null 后，才调用一次 task，subagent_type 必须为 analysis。"
+            "服务器为分析子 Agent 绑定最终授权结果。",
+        )
         prompt += (
             "\n本次为固定销售复盘模板，取代普通单次查询限制。先查询下列完整QuerySpec，然后只逐字使用工具返回的next_query继续；最多四次，next_query为null后才调用唯一analysis子Agent，result_id用最后一个句柄。不能提前分析、改参数或新增查询。初始QuerySpec:"
             + _json(review_query)
@@ -706,7 +769,7 @@ def build_runtime(
                 "runnable": analysis_graph,
             }
         ],
-        middleware=[ToolBoundary(MAIN_TOOLS, cancelled)],
+        middleware=[ToolBoundary(MAIN_TOOLS, cancelled, prepare_analysis_task)],
         name="sales-main",
     )
     main_inventory = _harden_graph(graph, MAIN_TOOLS)
@@ -744,49 +807,77 @@ async def run_agent(
     api_key: str | None = None,
     review_query: dict | None = None,
 ) -> dict:
-    graph, state = build_runtime(
-        message,
-        previous_query,
-        catalog,
-        query_callback,
-        analysis_callback,
-        cancelled,
-        mode=mode,
-        api_key=api_key,
-        review_query=review_query,
-    )
-    _check_cancelled(cancelled)
-    with tracing_context(enabled=False):
-        output = await graph.ainvoke(
-            {"messages": [HumanMessage(content=message)]},
-            config={"recursion_limit": 30, "callbacks": [], "max_concurrency": 1},
+    state: dict[str, Any] = {}
+    stage = "build"
+    try:
+        graph, state = build_runtime(
+            message,
+            previous_query,
+            catalog,
+            query_callback,
+            analysis_callback,
+            cancelled,
+            mode=mode,
+            api_key=api_key,
+            review_query=review_query,
         )
-    _check_cancelled(cancelled)
-    if state["_query_error"] is not None:
-        raise state["_query_error"]
-    if any(isinstance(m, ToolMessage) and m.status == "error" for m in output["messages"]):
-        raise AgentToolError("分析工具执行失败，未发布新结果；请重试或报告此问题")
-    answer = output["messages"][-1].content
-    if state["model_mode"] == "mock" and state["query_spec"]:
-        p = state["query_spec"]["period"]
-        answer = f"已分析 {p['start']} 至 {p['end']}（不含结束日）的模拟销售数据；口径及确定性分析见结果"
-    status = "SUCCEEDED" if state["result"] else "NEEDS_CLARIFICATION"
-    if answer.startswith("UNSUPPORTED_QUERY:"):
-        status = "UNSUPPORTED_QUERY"
-    if state["result"] is not None and (state["analysis"] is None or state["review_pending"]):
-        raise AgentBoundaryError("Analysis subagent did not complete the required authorized analysis")
-    state["runtime"]["query_specs"] = state["queries"]
-    state["runtime"]["model_calls"] = state.pop("_counter")["calls"]
-    state["runtime"]["budget"] = state.pop("_budget").snapshot()
-    return {
-        "status": status,
-        "answer": answer.removeprefix("NEEDS_CLARIFICATION: ").removeprefix("UNSUPPORTED_QUERY: "),
-        "query_spec": state["query_spec"],
-        "result": state["result"],
-        "analysis": state["analysis"],
-        "runtime": state["runtime"],
-        "tools_called": state["tools_called"],
-    }
+        stage = "invoke"
+        _check_cancelled(cancelled)
+        with tracing_context(enabled=False):
+            output = await graph.ainvoke(
+                {"messages": [HumanMessage(content=message)]},
+                config={"recursion_limit": 30, "callbacks": [], "max_concurrency": 1},
+            )
+        stage = "finalize"
+        _check_cancelled(cancelled)
+        if state["_query_error"] is not None:
+            raise state["_query_error"]
+        if any(isinstance(m, ToolMessage) and m.status == "error" for m in output["messages"]):
+            raise AgentToolError(
+                "分析工具执行失败，未发布新结果；请重试或报告此问题", reason="tool_execution_failed"
+            )
+        answer = output["messages"][-1].content
+        if state["model_mode"] == "mock" and state["query_spec"]:
+            p = state["query_spec"]["period"]
+            answer = f"已分析 {p['start']} 至 {p['end']}（不含结束日）的模拟销售数据；口径及确定性分析见结果"
+        status = "SUCCEEDED" if state["result"] else "NEEDS_CLARIFICATION"
+        if answer.startswith("UNSUPPORTED_QUERY:"):
+            status = "UNSUPPORTED_QUERY"
+        if state["result"] is not None and (state["analysis"] is None or state["review_pending"]):
+            raise AgentBoundaryError(
+                "Analysis subagent did not complete the required authorized analysis",
+                reason="review_incomplete" if state["review_pending"] else "analysis_missing",
+            )
+        state["runtime"]["query_specs"] = state["queries"]
+        state["runtime"]["model_calls"] = state["_counter"]["calls"]
+        state["runtime"]["budget"] = state["_budget"].snapshot()
+        return {
+            "status": status,
+            "answer": answer.removeprefix("NEEDS_CLARIFICATION: ").removeprefix("UNSUPPORTED_QUERY: "),
+            "query_spec": state["query_spec"],
+            "result": state["result"],
+            "analysis": state["analysis"],
+            "runtime": state["runtime"],
+            "tools_called": state["tools_called"],
+        }
+    except Exception as exc:
+        # Only bounded structural metadata crosses this boundary. Never retain
+        # provider text, model input, result handles, SQL, keys or raw errors.
+        reason = getattr(exc, "boundary_reason", "other_error")
+        if not isinstance(reason, str) or reason not in FAILURE_REASONS:
+            reason = "other_error"
+        exc.failure_diagnostics = {
+            "stage": stage,
+            "boundary_reason": reason,
+            "model_calls": state.get("_counter", {}).get("calls", 0),
+            "query_specs": state.get("queries", 0),
+            "tool_counts": {
+                name: state.get("tools_called", []).count(name)
+                for name in sorted(MAIN_TOOLS | ANALYSIS_TOOLS)
+                if name in state.get("tools_called", [])
+            },
+        }
+        raise
 
 
 def runtime_smoke_check() -> dict:

@@ -17,8 +17,8 @@ from fastapi.responses import JSONResponse
 from psycopg.types.json import Jsonb
 from pydantic import ValidationError
 
-from .agent import AgentToolError, run_agent, runtime_smoke_check
-from .budget import shared_budget
+from .agent import AgentBoundaryError, AgentCancelled, run_agent, runtime_smoke_check
+from .budget import BudgetExceeded, BudgetIntegrityError, shared_budget
 from .catalog import DIMENSIONS, METRICS
 from .config import settings
 from .db import Identity, connect, dataset_metadata, identity_for
@@ -300,6 +300,97 @@ def update_run(run_id, **fields):
         )
 
 
+# Persist only code-owned labels and bounded counts. Never serialize exception text,
+# model messages, tool arguments, handles, query values, or arbitrary class names.
+FAILURE_MESSAGES = {
+    "RUN_FAILED": "本次分析未完成，请缩小问题范围或稍后重试；未发布新结果",
+    "AGENT_BOUNDARY_ERROR": "分析执行边界校验失败，未发布新结果；请重试或报告此问题",
+    "AGENT_TOOL_ERROR": "分析工具执行失败，未发布新结果；请重试或报告此问题",
+    "QUERY_VALIDATION_FAILED": "查询参数不符合支持的业务规则，未发布新结果",
+    "SCOPE_CHANGED": "复盘期间授权范围已缩小，已停止后续动作；请按当前范围重新运行",
+    "FORBIDDEN_SCOPE": "所选门店不在当前账号的授权范围内",
+    "FORBIDDEN_RESULT": "无权访问结果",
+    "OUTSIDE_DATA_COVERAGE": "所选期间超出数据覆盖范围，请指定覆盖内的期间",
+    "RESULT_TOO_LARGE": "分组结果超过 20000 行，请缩小期间或分组范围",
+    "RECONCILIATION_FAILED": "分组变化与总变化无法对账，未发布结果",
+    "REVIEW_QUERY_LIMIT": "复盘已经结束，不允许继续查询",
+    "REVIEW_PLAN_VIOLATION": "复盘查询不符合固定模板，未发布结果",
+    "REVIEW_VERSION_CHANGED": "复盘期间数据或指标版本发生变化，未发布结果；请重新运行",
+    "REVIEW_INCOMPLETE": "复盘证据未完成，未发布结果",
+    "REVIEW_TIMEOUT": f"复盘超过 {REVIEW_TIMEOUT_SECONDS} 秒总流程时限，已停止后续动作，未发布部分结果",
+    "RUN_TIMEOUT": "本次调用超时，已停止后续动作，未发布新结果",
+    "BUDGET_EXCEEDED": "本次模型调用超过剩余预算，已停止后续动作；未发布新结果",
+    "BUDGET_INTEGRITY_ERROR": "预算账本已安全锁定；需要人工核查",
+    "CANCELLED": "运行已取消，未发布新的结果",
+}
+FAILURE_STAGES = frozenset(
+    {"preflight", "catalog", "agent", "query", "analysis", "publish", "build", "invoke", "finalize"}
+)
+FAILURE_REASONS = frozenset(
+    {
+        "result_handle_unauthorized",
+        "review_incomplete",
+        "analysis_missing",
+        "query_limit_exceeded",
+        "tool_not_allowed",
+        "subagent_not_allowed",
+        "model_call_limit_exceeded",
+        "model_input_invalid",
+        "model_request_invalid",
+        "query_handle_invalid",
+        "analysis_already_started",
+        "tool_execution_failed",
+        "other_error",
+    }
+)
+FAILURE_TOOLS = frozenset({"get_metric_catalog", "query_metrics", "task", "analyze_result"})
+
+
+def safe_failure_code(exc):
+    if isinstance(exc, ValidationError):
+        return "QUERY_VALIDATION_FAILED"
+    if isinstance(
+        exc, (QueryError, AgentBoundaryError, AgentCancelled, BudgetExceeded, BudgetIntegrityError)
+    ):
+        code = getattr(exc, "code", None)
+        if isinstance(code, str) and code in FAILURE_MESSAGES:
+            return code
+    return "RUN_FAILED"
+
+
+def failure_runtime(exc, stage, code):
+    raw = getattr(exc, "failure_diagnostics", None)
+    raw = raw if type(raw) is dict else {}
+
+    def label(value, allowed, default):
+        return value if type(value) is str and value in allowed else default
+
+    def count(value):
+        return value if type(value) is int and 0 <= value <= 1000 else None
+
+    tool_counts = raw.get("tool_counts")
+    tool_counts = tool_counts if type(tool_counts) is dict else {}
+    return Jsonb(
+        {
+            "model_mode": "live" if settings.agent_mode == "live" else "mock",
+            "failure": {
+                "version": 1,
+                "stage": label(raw.get("stage"), FAILURE_STAGES, stage),
+                "run_stage": stage,
+                "boundary_reason": label(raw.get("boundary_reason"), FAILURE_REASONS, "other_error"),
+                "error_code": code,
+                "model_calls": count(raw.get("model_calls")),
+                "query_specs": count(raw.get("query_specs")),
+                "tool_counts": {
+                    name: count(value)
+                    for name, value in tool_counts.items()
+                    if name in FAILURE_TOOLS and count(value) is not None
+                },
+            },
+        }
+    )
+
+
 async def process_run(
     run_id: str,
     identity: Identity,
@@ -309,6 +400,7 @@ async def process_run(
 ):
     event = CANCELLATIONS[run_id]
     generated = {}
+    failure_stage = "preflight"
     review_deadline = time.monotonic() + REVIEW_TIMEOUT_SECONDS if review_request else None
 
     def deadline_expired():
@@ -321,9 +413,7 @@ async def process_run(
         if current.subject != identity.subject or not set(identity.allowed_store_ids) <= set(
             current.allowed_store_ids
         ):
-            raise QueryError(
-                "SCOPE_CHANGED", "复盘期间授权范围已缩小，已停止后续动作；请按当前范围重新运行"
-            )
+            raise QueryError("SCOPE_CHANGED", "复盘期间授权范围已缩小，已停止后续动作；请按当前范围重新运行")
 
     def stop_requested():
         if event.is_set() or deadline_expired():
@@ -345,12 +435,15 @@ async def process_run(
     try:
         ensure_active()
         update_run(run_id, status="querying", progress_stage="querying")
+        failure_stage = "catalog"
         business_catalog = catalog_for(identity)
         review_session = (
             ReviewSession(review_request, business_catalog["categories"]) if review_request else None
         )
 
         def query_callback(spec):
+            nonlocal failure_stage
+            failure_stage = "query"
             ensure_active()
             if review_session:
                 review_session.validate_next(spec)
@@ -373,6 +466,8 @@ async def process_run(
             }
 
         def analysis_callback(result_id):
+            nonlocal failure_stage
+            failure_stage = "analysis"
             ensure_active()
             if result_id not in generated:
                 raise QueryError("FORBIDDEN_RESULT", "无权访问结果")
@@ -393,6 +488,7 @@ async def process_run(
                 ]
             }
 
+        failure_stage = "agent"
         remaining = max(0, review_deadline - time.monotonic()) if review_deadline else None
         async with asyncio.timeout(remaining):
             outcome = await run_agent(
@@ -414,6 +510,7 @@ async def process_run(
                 run_id, status="cancelled", progress_stage="cancelled", answer="运行已取消，未发布新的结果"
             )
             return
+        failure_stage = "publish"
         if outcome["status"] == "SUCCEEDED":
             review_payload = review_session.result() if review_session else None
             payload = (
@@ -473,13 +570,16 @@ async def process_run(
                 answer=outcome["answer"],
                 agent_runtime=Jsonb(outcome["runtime"]),
             )
-    except TimeoutError:
+    except TimeoutError as exc:
         event.set()
         update_run(
             run_id,
             status="failed",
             progress_stage="failed",
             error_code="REVIEW_TIMEOUT" if deadline_expired() else "RUN_TIMEOUT",
+            agent_runtime=failure_runtime(
+                exc, failure_stage, "REVIEW_TIMEOUT" if deadline_expired() else "RUN_TIMEOUT"
+            ),
             answer=f"复盘超过 {REVIEW_TIMEOUT_SECONDS} 秒总流程时限，已停止后续动作，未发布部分结果"
             if deadline_expired()
             else "本次调用超时，已停止后续动作，未发布新结果",
@@ -496,6 +596,7 @@ async def process_run(
                 status="failed",
                 progress_stage="failed",
                 error_code="REVIEW_TIMEOUT",
+                agent_runtime=failure_runtime(exc, failure_stage, "REVIEW_TIMEOUT"),
                 answer=f"复盘超过 {REVIEW_TIMEOUT_SECONDS} 秒总流程时限，已停止后续动作，未发布部分结果",
             )
         elif event.is_set():
@@ -503,16 +604,15 @@ async def process_run(
                 run_id, status="cancelled", progress_stage="cancelled", answer="运行已取消，未发布新的结果"
             )
         else:
-            code = getattr(
-                exc, "code", "QUERY_VALIDATION_FAILED" if isinstance(exc, ValidationError) else "RUN_FAILED"
+            code = safe_failure_code(exc)
+            update_run(
+                run_id,
+                status="failed",
+                progress_stage="failed",
+                error_code=code,
+                answer=FAILURE_MESSAGES[code],
+                agent_runtime=failure_runtime(exc, failure_stage, code),
             )
-            if isinstance(exc, ValidationError):
-                answer = "；".join(e["msg"] for e in exc.errors())
-            elif isinstance(exc, (QueryError, AgentToolError)) or code.startswith("BUDGET"):
-                answer = str(exc)
-            else:
-                answer = "本次分析未完成，请缩小问题范围或稍后重试；未发布新结果"
-            update_run(run_id, status="failed", progress_stage="failed", error_code=code, answer=answer)
     finally:
         CANCELLATIONS.pop(run_id, None)
         TASKS.pop(run_id, None)

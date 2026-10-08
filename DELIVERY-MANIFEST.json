@@ -1,6 +1,6 @@
 {
-  "candidate": "sales-final-20261007",
-  "base_remote_commit": "aa1b4f48259103a67422b88819b7f88bc209e121",
+  "candidate": "sales-live-review-fix-20261008",
+  "base_remote_commit": "a5818a23cf872a82cde2d15790a45ac75c9d076a",
   "github_pushed": true,
   "source_files": [
     {
@@ -21,11 +21,11 @@
     },
     {
       "path": "README.md",
-      "sha256": "d28a57e50319257ec6721bbc2a6b2a60613514af4927eaf2cd14004f06bdd325"
+      "sha256": "fcd04a425aac6c44bc09e32555fde99f54561958ddbff23d01ce3a35787376d0"
     },
     {
       "path": "STATUS.md",
-      "sha256": "0ff9f6fabaea48677760d15003b872d6ab88cc651a80d0ded04a86ccc88a01b9"
+      "sha256": "e5782fb95915acd5e6f2b04cc14b7e5998d5bff3938ddde4bb3325b4f395d523"
     },
     {
       "path": "backend/app/__init__.py",
@@ -33,7 +33,7 @@
     },
     {
       "path": "backend/app/agent.py",
-      "sha256": "842de20a0274b9e2b5fdf2a6a5f7b7abd976b79b48af2b9899bc80ba071db9ba"
+      "sha256": "9ea0788b461ca3a63e95c94684b0b342fa733018c7d7a80f66d58a541e0d0e70"
     },
     {
       "path": "backend/app/budget.py",
@@ -53,7 +53,7 @@
     },
     {
       "path": "backend/app/main.py",
-      "sha256": "957dab02a6145d8ae1060c13be0551ddb7deb07774ca14aaf0a342ecba299ed9"
+      "sha256": "8b1f2afe4d028905e52918df69f1641e270c16d8060ee85ac3a8c8540d1061fd"
     },
     {
       "path": "backend/app/presentation.py",
@@ -88,6 +88,10 @@
       "sha256": "899b066e72cd3ac79bc72dda734013ecbac6c7a093ddb69116546c8acb145684"
     },
     {
+      "path": "backend/tests/test_failure_diagnostics.py",
+      "sha256": "19366e965920b3180db4ad108f18359a70b6d72a421e849a388b5f890b941582"
+    },
+    {
       "path": "backend/tests/test_final_semantics.py",
       "sha256": "634f997c0a8c398a288ac3b7303a1fbcc9e6fbc47dcf2a18f4d4c0b49484860f"
     },
@@ -96,12 +100,16 @@
       "sha256": "a0ea860223ad0604cf97fea9c18b553fa6eb5ccb1f6077fe2074aa6f13388f2c"
     },
     {
+      "path": "backend/tests/test_live_review_boundary.py",
+      "sha256": "ab11ae469113eb6fbcde12ae79af4e7f00e7faf698b406f1ec55630eb1c1cdf8"
+    },
+    {
       "path": "backend/tests/test_presentation.py",
       "sha256": "57cd1dd53230167734d42ad9439eb29a2f7b10f56a21ce0f76c953e8617a25ab"
     },
     {
       "path": "backend/tests/test_review_reports.py",
-      "sha256": "eee3699e3cabe8ff1b0984d4ef76422c1d081a178e04e00e22da51daf2919f7f"
+      "sha256": "f73fb470be094dbc3e24de6506ceece280ab2dba09024ea673ee51f24f3acc2d"
     },
     {
       "path": "data/provenance/LICENSE-data.txt",
@@ -177,11 +185,11 @@
     },
     {
       "path": "docs/final-handoff.md",
-      "sha256": "f7a343b640060030a720625d056f8960cfef966516bc2e53734843441fd0374f"
+      "sha256": "984ee94f78b3d60a024f9bf9c1a011ae21cdfada30f43d5f09e1cd6ceee003d8"
     },
     {
       "path": "docs/final-verification.md",
-      "sha256": "1bbe9d345eb5871e3bd4e8f551ab9909c6640a8d2fa616ac6b54b9b1307869a0"
+      "sha256": "19d631526f4702180ac228086c34cf78fe782ee271b79b7c05ead550b2e10fd0"
     },
     {
       "path": "docs/live-api-validation.md",
@@ -409,28 +417,30 @@
     }
   ],
   "validation": {
-    "backend": 127,
-    "frontend": 59,
-    "mock_observation_seconds": 1800.159,
-    "http_responses": 219,
-    "unexpected_outcomes": 0,
-    "live_calls": 0,
-    "browser": "not_run",
-    "windows": "not_run",
-    "user_manual_acceptance": "pending"
+    "backend": 143,
+    "focused_http_cases": 3,
+    "live_provider_calls_this_fix": 0,
+    "actual_deepseek_retest": "blocked: original credentials and real budget ledger unavailable",
+    "previous_frontend_tests": 59,
+    "previous_frontend_context": "a5818a23 baseline, frontend unchanged",
+    "manual_acceptance": "pending"
   },
   "publication": {
     "repository": "HuahaiNo1/sales-analysis-agent",
     "branch": "main",
     "status": "published by the containing commit",
-    "archive_sha256": "f5603bfaca79a1bf5593fae409dd26e5eccbb8f92581841736b3fc3edf8924cc",
-    "source_identity_verified_before_publication": 101,
+    "archive_sha256": "0f957b4f1bfb6c564d5fc15aa9f0b451fe4e440b20f52cb1d11c94247707b323",
+    "source_identity_verified_before_publication": 103,
     "publication_only_source_changes": [
+      "README.md",
       "STATUS.md",
       "docs/final-handoff.md",
       "docs/final-verification.md"
     ],
-    "validation_evidence_files": 7,
+    "new_validation_evidence_files": 3,
+    "prior_verification_files_preserved": 7,
+    "actual_deepseek_retest": "not run: original credentials and real budget ledger unavailable",
+    "historical_live_failure_root_cause": "not established; handoff bug reproduced offline only",
     "manual_acceptance": "pending",
     "deployment": "not performed"
   }

@@ -1,0 +1,101 @@
+{
+  "status": "passed",
+  "checks": [
+    {
+      "name": "freeform child task succeeds through real graph and HTTP",
+      "runtime": {
+        "budget": {
+          "blocked": false,
+          "cap_rmb": 4.8,
+          "spent_rmb": 0.0,
+          "accounting": "full_context_reservation_then_validated_peak_rate_settlement",
+          "exposure_rmb": 0.0,
+          "reserved_rmb": 0.0,
+          "remaining_rmb": 4.8,
+          "calls_reserved": 0,
+          "pricing_checked_at": "2026-10-06",
+          "per_call_reserve_rmb": 2.113536,
+          "context_token_ceiling": 1048576,
+          "input_rmb_per_million": 2,
+          "output_rmb_per_million": 8
+        },
+        "framework": "deepagents",
+        "subagents": [
+          "analysis"
+        ],
+        "main_tools": [
+          "get_metric_catalog",
+          "query_metrics",
+          "task"
+        ],
+        "model_mode": "mock",
+        "model_calls": 9,
+        "query_specs": 4,
+        "analysis_tools": [
+          "analyze_result"
+        ],
+        "max_query_specs": 4,
+        "langsmith_tracing": false,
+        "max_model_calls_per_run": 12
+      }
+    },
+    {
+      "name": "MISSING_ANALYSIS sanitized owner-only diagnostics; no partial publication",
+      "error_code": "AGENT_BOUNDARY_ERROR",
+      "runtime": {
+        "failure": {
+          "stage": "finalize",
+          "version": 1,
+          "run_stage": "query",
+          "error_code": "AGENT_BOUNDARY_ERROR",
+          "model_calls": 8,
+          "query_specs": 4,
+          "tool_counts": {
+            "task": 1,
+            "query_metrics": 4,
+            "get_metric_catalog": 1
+          },
+          "boundary_reason": "analysis_missing"
+        },
+        "model_mode": "mock"
+      }
+    },
+    {
+      "name": "SYNTHETIC_FAILURE sanitized owner-only diagnostics; no partial publication",
+      "error_code": "RUN_FAILED",
+      "runtime": {
+        "failure": {
+          "stage": "invoke",
+          "version": 1,
+          "run_stage": "query",
+          "error_code": "RUN_FAILED",
+          "model_calls": 3,
+          "query_specs": 1,
+          "tool_counts": {
+            "query_metrics": 1,
+            "get_metric_catalog": 1
+          },
+          "boundary_reason": "other_error"
+        },
+        "model_mode": "mock"
+      }
+    }
+  ],
+  "mock_only": true,
+  "live_calls": 0,
+  "source_hashes": {
+    "backend/app/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "backend/app/agent.py": "9ea0788b461ca3a63e95c94684b0b342fa733018c7d7a80f66d58a541e0d0e70",
+    "backend/app/budget.py": "d86b2d9a1a819a631730cd3b7bfd3ed0b53e921ba04ebd01f60c9ca14bc2bf4d",
+    "backend/app/catalog.py": "0a9bdd50b4da6873fe5f0265042f1324fe97b7fd8e44f0f73af2b03d6884c1d1",
+    "backend/app/config.py": "61b1d8f19fea3049d0483a49d3e6762266f25863a69867ea547f0ea7189dca9d",
+    "backend/app/db.py": "4b7a5e36cf016382344987751de751d8aa9a25b4b947752ff3cb6319aeef63f4",
+    "backend/app/main.py": "8b1f2afe4d028905e52918df69f1641e270c16d8060ee85ac3a8c8540d1061fd",
+    "backend/app/presentation.py": "3a79cee00661eeb9e9bcbf97273fac44701d52283f57232210766718b3b25399",
+    "backend/app/query.py": "e11c7523827f7b233f35e384974afddffe16698527e5b0787749d6a0de6c987d",
+    "backend/app/report_export.py": "5ec15dbc60bc44456ceec5949aaa87678cdd3b0b9ca3c64ce72c94b5e65ac29a",
+    "backend/app/reports.py": "027dc78563b5070b06ca5b437a675968a53c713fd993679ee8d15920122ccc1d",
+    "backend/app/review.py": "84537f0a8d865501fb3a5d85360b311de553bfcbb78b09b981ba5ed2a9fe5769",
+    "backend/app/schemas.py": "419a625e865754421c3f5270d6189b5222b2264e97a3b6b75c847fb3166ab1fd"
+  }
+}
